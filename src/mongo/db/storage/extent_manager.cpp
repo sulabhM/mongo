@@ -199,6 +199,8 @@ namespace mongo {
             df->badOfs(ofs); // will uassert - external call to keep out of the normal code path
         }
 
+        std::cerr << "recordFor " << _dbname << " " << loc.a() << " " << loc.getOfs() << std::endl;
+
         return reinterpret_cast<Record*>( df->p() + ofs );
     }
 
@@ -210,6 +212,7 @@ namespace mongo {
 
     Extent* ExtentManager::getExtent( const DiskLoc& loc, bool doSanityCheck ) const {
         loc.assertOk();
+        std::cerr << "getExtent " << _dbname << " " << loc.a() << " " << loc.getOfs() << std::endl;
         Extent* e = reinterpret_cast<Extent*>( _getOpenFile( loc.a() )->p() + loc.getOfs() );
         if ( doSanityCheck )
             e->assertOk();
