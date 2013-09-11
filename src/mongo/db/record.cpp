@@ -16,6 +16,8 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <sstream>
+
 #include "pch.h"
 #include "mongo/base/init.h"
 #include "mongo/db/curop.h"
@@ -38,13 +40,28 @@ namespace mongo {
         b.appendNumber( "accessesNotInMemory" , accessesNotInMemory.load() );
         b.appendNumber( "pageFaultExceptionsThrown" , pageFaultExceptionsThrown.load() );
 
+        //BSONObjBuilder d;
+        //for (std::map<size_t, struct RecordStatDetails>::const_iterator it = recordStats.details.begin();
+        //     it != recordStats.details.end();
+        //     it++) {
+        //    d.appendNumber( "page", it->first );
+        //    d.appendNumber( "accessesNotInMemory" , it->second.accessesNotInMemory.load() );
+        //    d.appendNumber( "pageFaultExceptionsThrown" , it->second.pageFaultExceptionsThrown.load() );
+        //}
+
+        //// Or d.done()?  I think that will leak...
+        //b.append( "details" , d.obj() );
+
         BSONObjBuilder d;
+        BSONObjBuilder sub;
         for (std::map<size_t, struct RecordStatDetails>::const_iterator it = recordStats.details.begin();
              it != recordStats.details.end();
              it++) {
-            d.appendNumber( "page", it->first );
-            d.appendNumber( "accessesNotInMemory" , it->second.accessesNotInMemory.load() );
-            d.appendNumber( "pageFaultExceptionsThrown" , it->second.pageFaultExceptionsThrown.load() );
+            sub.appendNumber( "accessesNotInMemory" , it->second.accessesNotInMemory.load() );
+            sub.appendNumber( "pageFaultExceptionsThrown" , it->second.pageFaultExceptionsThrown.load() );
+            std::stringstream s;
+            s << it->first;
+            d.append( s.str(), sub.obj() );
         }
 
         // Or d.done()?  I think that will leak...
