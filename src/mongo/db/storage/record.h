@@ -30,16 +30,25 @@
 
 #pragma once
 
+#include <map>
+
 #include "mongo/bson/bsonobjbuilder.h"
 #include "mongo/platform/atomic_word.h"
 
 namespace mongo {
+
+    struct RecordStatDetails {
+        AtomicInt64 accessesNotInMemory;
+        AtomicInt64 pageFaultExceptionsThrown;
+    };
 
     struct RecordStats {
         void record( BSONObjBuilder& b );
 
         AtomicInt64 accessesNotInMemory;
         AtomicInt64 pageFaultExceptionsThrown;
+
+        std::map<size_t, struct RecordStatDetails> details;
     };
 
 
