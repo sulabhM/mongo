@@ -38,6 +38,18 @@ namespace mongo {
         b.appendNumber( "accessesNotInMemory" , accessesNotInMemory.load() );
         b.appendNumber( "pageFaultExceptionsThrown" , pageFaultExceptionsThrown.load() );
 
+        BSONObjBuilder d;
+        for (std::map<size_t, struct RecordStatDetails>::const_iterator it = recordStats.details.begin();
+             it != recordStats.details.end();
+             it++) {
+            d.appendNumber( "page", it->first );
+            d.appendNumber( "accessesNotInMemory" , it->second.accessesNotInMemory.load() );
+            d.appendNumber( "pageFaultExceptionsThrown" , it->second.pageFaultExceptionsThrown.load() );
+        }
+
+        // Or d.done()?  I think that will leak...
+        b.append( "details" , d.obj() );
+
     }
 
     void Record::appendStats( BSONObjBuilder& b ) {
@@ -521,8 +533,12 @@ namespace mongo {
 
         const Client& client = cc();
         Database* db = client.database();
+
+        const size_t page = (size_t)_data >> 12;
+        RecordStatDetails & details = recordStats.details[page];
         
         recordStats.accessesNotInMemory.fetchAndAdd(1);
+        details.accessesNotInMemory.fetchAndAdd(1);
         if ( db )
             db->recordStats().accessesNotInMemory.fetchAndAdd(1);
         
@@ -536,6 +552,7 @@ namespace mongo {
         }
 
         recordStats.pageFaultExceptionsThrown.fetchAndAdd(1);
+        details.pageFaultExceptionsThrown.fetchAndAdd(1);
         if ( db )
             db->recordStats().pageFaultExceptionsThrown.fetchAndAdd(1);
 
