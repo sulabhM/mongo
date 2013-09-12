@@ -28,6 +28,8 @@
 *    it in the license file.
 */
 
+#include <sstream>
+
 #include "mongo/pch.h"
 
 #include "mongo/db/storage/record.h"
@@ -49,6 +51,7 @@ namespace mongo {
     RecordStats recordStats;
 
     void RecordStats::record( BSONObjBuilder& b ) {
+        b.appendNumber( "accessesInMemory" , accessesInMemory.load() );
         b.appendNumber( "accessesNotInMemory" , accessesNotInMemory.load() );
         b.appendNumber( "pageFaultExceptionsThrown" , pageFaultExceptionsThrown.load() );
 
@@ -56,13 +59,18 @@ namespace mongo {
         for (std::map<size_t, struct RecordStatDetails>::const_iterator it = recordStats.details.begin();
              it != recordStats.details.end();
              it++) {
-            d.appendNumber( "page", it->first );
-            d.appendNumber( "accessesNotInMemory" , it->second.accessesNotInMemory.load() );
-            d.appendNumber( "pageFaultExceptionsThrown" , it->second.pageFaultExceptionsThrown.load() );
+            BSONObjBuilder sub;
+            sub.appendNumber( "accessesInMemory" , it->second.accessesInMemory.load() );
+            sub.appendNumber( "accessesNotInMemory" , it->second.accessesNotInMemory.load() );
+            sub.appendNumber( "pageFaultExceptionsThrown" , it->second.pageFaultExceptionsThrown.load() );
+            std::stringstream s;
+            s << it->first;
+            d.append( s.str(), sub.done() );
         }
 
-        // Or d.done()?  I think that will leak...
-        b.append( "details" , d.obj() );
+        // Or d.done()?  I think that will leak...?
+        //b.append( "details" , d.obj() );
+        b.append( "details" , d.done() );
 
     }
 
@@ -542,19 +550,29 @@ namespace mongo {
     }
 
     void Record::_accessing() const {
-        if ( likelyInPhysicalMemory() )
-            return;
+        const size_t page = (size_t)_data >> 12;
+        RecordStatDetails & details = recordStats.details[page];
+
+        recordStats.accessesInMemory.fetchAndAdd(1);
+        details.accessesInMemory.fetchAndAdd(1);
 
         const Client& client = cc();
         Database* db = client.database();
 
-        const size_t page = (size_t)_data >> 12;
-        RecordStatDetails & details = recordStats.details[page];
-        
+        if ( db ) {
+            db->recordStats().accessesInMemory.fetchAndAdd(1);
+            db->recordStats().details[page].accessesInMemory.fetchAndAdd(1);
+        }
+
+        if ( likelyInPhysicalMemory() )
+            return;
+
         recordStats.accessesNotInMemory.fetchAndAdd(1);
         details.accessesNotInMemory.fetchAndAdd(1);
-        if ( db )
+        if ( db ) {
             db->recordStats().accessesNotInMemory.fetchAndAdd(1);
+            db->recordStats().details[page].accessesNotInMemory.fetchAndAdd(1);
+        }
         
         if ( ! client.allowedToThrowPageFaultException() )
             return;
@@ -567,8 +585,10 @@ namespace mongo {
 
         recordStats.pageFaultExceptionsThrown.fetchAndAdd(1);
         details.pageFaultExceptionsThrown.fetchAndAdd(1);
-        if ( db )
+        if ( db ) {
             db->recordStats().pageFaultExceptionsThrown.fetchAndAdd(1);
+            db->recordStats().details[page].pageFaultExceptionsThrown.fetchAndAdd(1);
+        }
 
         DEV fassert( 16236 , ! inConstructorChain(true) );
         throw PageFaultException(this);

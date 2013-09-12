@@ -38,6 +38,7 @@
 namespace mongo {
 
     struct RecordStatDetails {
+        AtomicInt64 accessesInMemory;
         AtomicInt64 accessesNotInMemory;
         AtomicInt64 pageFaultExceptionsThrown;
     };
@@ -45,6 +46,7 @@ namespace mongo {
     struct RecordStats {
         void record( BSONObjBuilder& b );
 
+        AtomicInt64 accessesInMemory;
         AtomicInt64 accessesNotInMemory;
         AtomicInt64 pageFaultExceptionsThrown;
 
