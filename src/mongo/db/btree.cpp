@@ -1519,29 +1519,33 @@ namespace mongo {
     }
 
     template< class V >
-    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction) const {
+    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail) const {
         KeyOwned k(key);
-        return locate(idx, thisLoc, k, order, pos, found, recordLoc, direction);
+        return locate(idx, thisLoc, k, order, pos, found, recordLoc, direction, trail);
     }
 
     template< class V >
-    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction) const {
+    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail) const {
         int p;
         found = find(idx, key, recordLoc, order, p, /*assertIfDup*/ false);
         if ( found ) {
             pos = p;
+            if (trail) trail->push_back((double)p);
             return thisLoc;
         }
 
         DiskLoc child = this->childForPos(p);
 
         if ( !child.isNull() ) {
-            DiskLoc l = BTREE(child)->locate(idx, child, key, order, pos, found, recordLoc, direction);
-            if ( !l.isNull() )
+            DiskLoc l = BTREE(child)->locate(idx, child, key, order, pos, found, recordLoc, direction, trail);
+            if ( !l.isNull() ) {
+                if (trail) trail->push_back((double)p);
                 return l;
+            }
         }
 
         pos = p;
+        if (trail) trail->push_back((double)p);
         if ( direction < 0 )
             return --pos == -1 ? DiskLoc() /*theend*/ : thisLoc;
         else

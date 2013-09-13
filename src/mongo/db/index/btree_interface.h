@@ -70,7 +70,8 @@ namespace mongo {
                                int& pos,
                                bool& found,
                                const DiskLoc& recordLoc,
-                               int direction = 1) const = 0;
+                               int direction = 1,
+                               vector<double> *trail = NULL) const = 0;
 
         virtual bool wouldCreateDup(const IndexDetails& idx,
                                     const DiskLoc& thisLoc,

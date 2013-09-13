@@ -732,9 +732,9 @@ namespace mongo {
          *          result even if found is false.
          */
         DiskLoc locate(const IndexDetails &idx , const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order,
-                       int& pos, bool& found, const DiskLoc &recordLoc, int direction=1) const;
+                       int& pos, bool& found, const DiskLoc &recordLoc, int direction=1, vector<double> *trail = NULL) const;
         DiskLoc locate(const IndexDetails &idx , const DiskLoc& thisLoc, const Key& key, const Ordering &order,
-                       int& pos, bool& found, const DiskLoc &recordLoc, int direction=1) const;
+                       int& pos, bool& found, const DiskLoc &recordLoc, int direction=1, vector<double> *trail = NULL) const;
 
         /**
          * find the first instance of the key

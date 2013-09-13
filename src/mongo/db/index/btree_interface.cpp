@@ -71,7 +71,8 @@ namespace mongo {
                                int& pos,
                                bool& found,
                                const DiskLoc& recordLoc,
-                               int direction) const {
+                               int direction,
+                               vector<double> *trail) const {
             // FYI: direction has a default of 1
             return thisLoc.btree<Version>()->locate(
                 idx,
@@ -81,7 +82,8 @@ namespace mongo {
                 pos,
                 found,
                 recordLoc,
-                direction);
+                direction,
+                trail);
         }
 
         virtual bool wouldCreateDup(const IndexDetails& idx,

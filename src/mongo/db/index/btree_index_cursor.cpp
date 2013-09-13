@@ -90,6 +90,8 @@ namespace mongo {
         // Unused out parameter.
         bool found;
 
+        vector<double> trail;
+
         _bucket = _interface->locate(
                 _descriptor->getOnDisk(),
                 _descriptor->getHead(),
@@ -98,7 +100,16 @@ namespace mongo {
                 _keyOffset,
                 found,
                 1 == _direction ? minDiskLoc : maxDiskLoc,
-                _direction);
+                _direction,
+                &trail);
+
+        std::cerr << "TRAIL: ( ";
+        for (vector<double>::const_iterator it = trail.begin();
+             it != trail.end();
+             it++) {
+            std::cerr << *it << ", ";
+        }
+        std::cerr << ")" << std::endl;
 
         skipUnusedKeys();
 
