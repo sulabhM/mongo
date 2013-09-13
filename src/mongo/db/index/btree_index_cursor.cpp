@@ -29,6 +29,7 @@
 #include "mongo/db/index/btree_index_cursor.h"
 
 #include <vector>
+#include <iomanip>
 
 #include "mongo/base/status.h"
 #include "mongo/db/diskloc.h"
@@ -103,7 +104,7 @@ namespace mongo {
                 _direction,
                 &trail);
 
-        std::cerr << "TRAIL: ( ";
+        std::cerr << "TRAIL: ( " << std::setprecision(10);
         for (vector<double>::const_iterator it = trail.begin();
              it != trail.end();
              it++) {

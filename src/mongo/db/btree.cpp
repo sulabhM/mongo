@@ -738,6 +738,16 @@ namespace mongo {
         return ss.str();
     }
 
+    template< class V >
+    int BtreeBucket<V>::numUsed() const {
+        int num = 0;
+        for (int i = 0; i < this->n; i++) {
+            if (isUsed(i))
+                num++;
+        }
+        return num;
+    }
+
     /**
      * Find a key withing this btree bucket.
      *
@@ -1528,9 +1538,9 @@ namespace mongo {
     DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail) const {
         int p;
         found = find(idx, key, recordLoc, order, p, /*assertIfDup*/ false);
+        if (trail) trail->push_back((double)p / (double)numUsed());
         if ( found ) {
             pos = p;
-            if (trail) trail->push_back((double)p);
             return thisLoc;
         }
 
@@ -1538,14 +1548,11 @@ namespace mongo {
 
         if ( !child.isNull() ) {
             DiskLoc l = BTREE(child)->locate(idx, child, key, order, pos, found, recordLoc, direction, trail);
-            if ( !l.isNull() ) {
-                if (trail) trail->push_back((double)p);
+            if ( !l.isNull() )
                 return l;
-            }
         }
 
         pos = p;
-        if (trail) trail->push_back((double)p);
         if ( direction < 0 )
             return --pos == -1 ? DiskLoc() /*theend*/ : thisLoc;
         else

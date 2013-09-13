@@ -655,6 +655,7 @@ namespace mongo {
         long long fullValidate(const DiskLoc& thisLoc, const BSONObj &order, long long *unusedCount = 0, bool strict = false, unsigned depth=0) const; /* traverses everything */
 
         bool isUsed( int i ) const { return this->k(i).isUsed(); }
+        int numUsed() const;
         string bucketSummary() const;
         void dump(unsigned depth=0) const;
 
