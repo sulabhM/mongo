@@ -91,6 +91,23 @@ namespace mongo {
         // Unused out parameter.
         bool found;
 
+        vector<long long> used;
+
+        _interface->numUsedAllLevels(
+                _descriptor->getHead(),
+                0,
+                used);
+
+        std::cerr << "USED ALL LEVELS: ( ";
+        for (vector<long long>::const_iterator it = used.begin();
+             it != used.end();
+             it++) {
+            std::cerr << *it << ", ";
+        }
+        std::cerr << ")" << std::endl;
+
+
+
         vector<double> trail;
 
         _bucket = _interface->locate(

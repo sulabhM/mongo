@@ -86,6 +86,13 @@ namespace mongo {
                 trail);
         }
 
+        virtual void numUsedAllLevels(const DiskLoc& thisLoc,
+                                      unsigned int depth,
+                                      vector<long long> &used) const {
+            return thisLoc.btree<Version>()->numUsedAllLevels(depth,
+                used);
+        }
+
         virtual bool wouldCreateDup(const IndexDetails& idx,
                                     const DiskLoc& thisLoc,
                                     const BSONObj& key,

@@ -1529,6 +1529,30 @@ namespace mongo {
     }
 
     template< class V >
+    void BtreeBucket<V>::numUsedAllLevels(unsigned int depth, vector<long long> &used) const {
+        if (used.size() < depth + 1) {
+            used.resize(depth + 1);
+        }
+        // DEBUG: count the number of buckets
+        //used[depth] += 1;
+        used[depth] += numUsed();
+
+        // Note the less-equal below, otherwise we miss the final child bucket
+        // (which comes after the key at position n).
+        for (int i = 0; i <= this->n; i++) {
+            if ( ! isUsed(i)) {
+                continue;
+            }
+
+            // There's probably a more direct way of doing this....
+            DiskLoc child = this->childForPos(i);
+            if ( !child.isNull() ) {
+                BTREE(child)->numUsedAllLevels(depth + 1, used);
+            }
+        }
+    }
+
+    template< class V >
     DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail) const {
         KeyOwned k(key);
         return locate(idx, thisLoc, k, order, pos, found, recordLoc, direction, trail);
