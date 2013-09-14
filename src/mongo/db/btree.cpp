@@ -1562,7 +1562,17 @@ namespace mongo {
     DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail) const {
         int p;
         found = find(idx, key, recordLoc, order, p, /*assertIfDup*/ false);
+
+        // FIXME
+        // element-wise sum children to the left of p (not inclusive, ie. [0, p) )
+        // element-wise sum children to the right of p (not inclusive, ie. [p+1, n+1) )
+        // pop front from the given left_sums/right_sums, use them in addition to p and numUsed() to get the overall fraction of p for this level.
+        // element-wise sum the remaining left_sums/right_sums onto the above left/right children sums.
+        // pass these left/right sums into the recursive call below.
+        // (if the given left_sum/right_sum is NULL, then we are up against the left/right edge of the tree.  so just ignore in that case.)
+
         if (trail) trail->push_back((double)p / (double)numUsed());
+
         if ( found ) {
             pos = p;
             return thisLoc;
