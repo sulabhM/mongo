@@ -1572,7 +1572,19 @@ namespace mongo {
         // pass these left/right sums into the recursive call below.
         // (if the given left_sum/right_sum is NULL, then we are up against the left/right edge of the tree.  so just ignore in that case.)
 
-        if (trail) trail->push_back((double)p / (double)numUsed());
+        if (trail) {
+            long long outside_left = 0;
+            if (l_used && l_used->size() > 0) {
+                outside_left += (*l_used)[0];
+            }
+            long long outside_right = 0;
+            if (r_used && r_used->size() > 0) {
+                outside_right += (*r_used)[0];
+            }
+            long long total = outside_left + numUsed() + outside_right;
+            long long left = outside_left + p;
+            trail->push_back((double)left / (double)total);
+        }
 
         if ( found ) {
             pos = p;
