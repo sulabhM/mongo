@@ -73,8 +73,8 @@ namespace mongo {
                                const DiskLoc& recordLoc,
                                int direction,
                                vector<double> *trail,
-                               vector<unsigned long long> *l_used,
-                               vector<unsigned long long> *r_used) const {
+                               deque<unsigned long long> *l_used,
+                               deque<unsigned long long> *r_used) const {
             // FYI: direction has a default of 1
             return thisLoc.btree<Version>()->locate(
                 idx,
@@ -91,7 +91,7 @@ namespace mongo {
         }
 
         virtual void numUsedAllLevels(const DiskLoc& thisLoc,
-                                      vector<unsigned long long> &used,
+                                      deque<unsigned long long> &used,
                                       unsigned int depth) const {
             return thisLoc.btree<Version>()->numUsedAllLevels(used, depth);
         }

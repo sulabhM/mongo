@@ -30,6 +30,8 @@
 
 #pragma once
 
+#include <deque>
+
 #include "mongo/pch.h"
 
 #include "mongo/db/diskloc.h"
@@ -726,7 +728,7 @@ namespace mongo {
          */
         bool unindex(const DiskLoc thisLoc, IndexDetails& id, const BSONObj& key, const DiskLoc recordLoc) const;
 
-        void numUsedAllLevels(vector<unsigned long long> &used, unsigned int depth = 0) const;
+        void numUsedAllLevels(deque<unsigned long long> &used, unsigned int depth = 0) const;
 
         /**
          * locate may return an "unused" key that is just a marker.  so be careful.
@@ -737,10 +739,10 @@ namespace mongo {
          */
         DiskLoc locate(const IndexDetails &idx , const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order,
                        int& pos, bool& found, const DiskLoc &recordLoc, int direction=1, vector<double> *trail = NULL,
-                       vector<unsigned long long> *l_used = NULL, vector<unsigned long long> *r_used = NULL) const;
+                       deque<unsigned long long> *l_used = NULL, deque<unsigned long long> *r_used = NULL) const;
         DiskLoc locate(const IndexDetails &idx , const DiskLoc& thisLoc, const Key& key, const Ordering &order,
                        int& pos, bool& found, const DiskLoc &recordLoc, int direction=1, vector<double> *trail = NULL,
-                       vector<unsigned long long> *l_used = NULL, vector<unsigned long long> *r_used = NULL) const;
+                       deque<unsigned long long> *l_used = NULL, deque<unsigned long long> *r_used = NULL) const;
 
         /**
          * find the first instance of the key

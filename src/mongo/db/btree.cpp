@@ -1529,7 +1529,7 @@ namespace mongo {
     }
 
     template< class V >
-    void BtreeBucket<V>::numUsedAllLevels(vector<unsigned long long> &used, unsigned int depth) const {
+    void BtreeBucket<V>::numUsedAllLevels(deque<unsigned long long> &used, unsigned int depth) const {
         if (used.size() < depth + 1) {
             used.resize(depth + 1);
         }
@@ -1553,13 +1553,13 @@ namespace mongo {
     }
 
     template< class V >
-    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, vector<unsigned long long> *l_used, vector<unsigned long long> *r_used) const {
+    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, deque<unsigned long long> *l_used, deque<unsigned long long> *r_used) const {
         KeyOwned k(key);
         return locate(idx, thisLoc, k, order, pos, found, recordLoc, direction, trail, l_used, r_used);
     }
 
     template< class V >
-    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, vector<unsigned long long> *l_used, vector<unsigned long long> *r_used) const {
+    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, deque<unsigned long long> *l_used, deque<unsigned long long> *r_used) const {
         int p;
         found = find(idx, key, recordLoc, order, p, /*assertIfDup*/ false);
 
@@ -1575,11 +1575,11 @@ namespace mongo {
         if (trail) {
             unsigned long long outside_left = 0;
             if (l_used && l_used->size() > 0) {
-                outside_left += (*l_used)[0];
+                outside_left += l_used->front();
             }
             unsigned long long outside_right = 0;
             if (r_used && r_used->size() > 0) {
-                outside_right += (*r_used)[0];
+                outside_right += r_used->front();
             }
             unsigned long long total = outside_left + numUsed() + outside_right;
             unsigned long long left = outside_left + p;
@@ -1595,21 +1595,62 @@ namespace mongo {
 
         if ( !child.isNull() ) {
 
-            vector<unsigned long long> l_used_child;
-            vector<unsigned long long> r_used_child;
+            bool own_l = false;
+            bool own_r = false;
+            if (trail) {
+                if ( ! l_used ) {
+                    l_used = new deque<unsigned long long>();
+                    own_l = true;
+                } else {
+                    l_used->pop_front();
+                }
+                if ( ! r_used ) {
+                    r_used = new deque<unsigned long long>();
+                    own_r = true;
+                } else {
+                    r_used->pop_front();
+                }
 
+                for (int i = 0; i < p; i++) {
+                    if ( ! isUsed(i)) {
+                        continue;
+                    }
 
-            vector<unsigned long long> used;
+                    // There's probably a more direct way of doing this....
+                    DiskLoc child = this->childForPos(i);
+                    if ( !child.isNull() ) {
+                        BTREE(child)->numUsedAllLevels(*l_used);
+                    }
+                }
+
+                for (int i = p + 1; i <= this->n; i++) {
+                    if ( ! isUsed(i)) {
+                        continue;
+                    }
+
+                    // There's probably a more direct way of doing this....
+                    DiskLoc child = this->childForPos(i);
+                    if ( !child.isNull() ) {
+                        BTREE(child)->numUsedAllLevels(*r_used);
+                    }
+                }
+            }
+
+            deque<unsigned long long> used;
             BTREE(child)->numUsedAllLevels(used);
             std::cerr << "used all levels: ( ";
-            for (vector<unsigned long long>::const_iterator it = used.begin();
+            for (deque<unsigned long long>::const_iterator it = used.begin();
                  it != used.end();
                  it++) {
                 std::cerr << *it << ", ";
             }
             std::cerr << ")" << std::endl;
 
-            DiskLoc l = BTREE(child)->locate(idx, child, key, order, pos, found, recordLoc, direction, trail);
+            DiskLoc l = BTREE(child)->locate(idx, child, key, order, pos, found, recordLoc, direction, trail, l_used, r_used);
+
+            if (own_l) delete l_used;
+            if (own_r) delete r_used;
+
             if ( !l.isNull() )
                 return l;
         }
