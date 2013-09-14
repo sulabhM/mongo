@@ -658,8 +658,7 @@ namespace mongo {
         string bucketSummary() const;
         void dump(unsigned depth=0) const;
 
-        int numUsed() const;
-        void numUsedAllLevels(vector<long long> &used, unsigned int depth = 0) const;
+        unsigned int numUsed() const;
 
         /**
          * @return true if key exists in index
@@ -727,6 +726,8 @@ namespace mongo {
          */
         bool unindex(const DiskLoc thisLoc, IndexDetails& id, const BSONObj& key, const DiskLoc recordLoc) const;
 
+        void numUsedAllLevels(vector<unsigned long long> &used, unsigned int depth = 0) const;
+
         /**
          * locate may return an "unused" key that is just a marker.  so be careful.
          *   looks for a key:recordloc pair.
@@ -736,10 +737,10 @@ namespace mongo {
          */
         DiskLoc locate(const IndexDetails &idx , const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order,
                        int& pos, bool& found, const DiskLoc &recordLoc, int direction=1, vector<double> *trail = NULL,
-                       vector<long long> *l_used = NULL, vector<long long> *r_used = NULL) const;
+                       vector<unsigned long long> *l_used = NULL, vector<unsigned long long> *r_used = NULL) const;
         DiskLoc locate(const IndexDetails &idx , const DiskLoc& thisLoc, const Key& key, const Ordering &order,
                        int& pos, bool& found, const DiskLoc &recordLoc, int direction=1, vector<double> *trail = NULL,
-                       vector<long long> *l_used = NULL, vector<long long> *r_used = NULL) const;
+                       vector<unsigned long long> *l_used = NULL, vector<unsigned long long> *r_used = NULL) const;
 
         /**
          * find the first instance of the key

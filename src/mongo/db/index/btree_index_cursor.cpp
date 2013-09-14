@@ -91,12 +91,12 @@ namespace mongo {
         // Unused out parameter.
         bool found;
 
-        vector<long long> used;
+        vector<unsigned long long> used;
 
         _interface->numUsedAllLevels(_descriptor->getHead(), used);
 
         std::cerr << "USED ALL LEVELS: ( ";
-        for (vector<long long>::const_iterator it = used.begin();
+        for (vector<unsigned long long>::const_iterator it = used.begin();
              it != used.end();
              it++) {
             std::cerr << *it << ", ";

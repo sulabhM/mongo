@@ -739,8 +739,8 @@ namespace mongo {
     }
 
     template< class V >
-    int BtreeBucket<V>::numUsed() const {
-        int num = 0;
+    unsigned int BtreeBucket<V>::numUsed() const {
+        unsigned int num = 0;
         for (int i = 0; i < this->n; i++) {
             if (isUsed(i))
                 num++;
@@ -1529,7 +1529,7 @@ namespace mongo {
     }
 
     template< class V >
-    void BtreeBucket<V>::numUsedAllLevels(vector<long long> &used, unsigned int depth) const {
+    void BtreeBucket<V>::numUsedAllLevels(vector<unsigned long long> &used, unsigned int depth) const {
         if (used.size() < depth + 1) {
             used.resize(depth + 1);
         }
@@ -1553,13 +1553,13 @@ namespace mongo {
     }
 
     template< class V >
-    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, vector<long long> *l_used, vector<long long> *r_used) const {
+    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, vector<unsigned long long> *l_used, vector<unsigned long long> *r_used) const {
         KeyOwned k(key);
         return locate(idx, thisLoc, k, order, pos, found, recordLoc, direction, trail, l_used, r_used);
     }
 
     template< class V >
-    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, vector<long long> *l_used, vector<long long> *r_used) const {
+    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, vector<unsigned long long> *l_used, vector<unsigned long long> *r_used) const {
         int p;
         found = find(idx, key, recordLoc, order, p, /*assertIfDup*/ false);
 
@@ -1573,16 +1573,16 @@ namespace mongo {
         // (if the given left_sum/right_sum is NULL, then we are up against the left/right edge of the tree.  so just ignore in that case.)
 
         if (trail) {
-            long long outside_left = 0;
+            unsigned long long outside_left = 0;
             if (l_used && l_used->size() > 0) {
                 outside_left += (*l_used)[0];
             }
-            long long outside_right = 0;
+            unsigned long long outside_right = 0;
             if (r_used && r_used->size() > 0) {
                 outside_right += (*r_used)[0];
             }
-            long long total = outside_left + numUsed() + outside_right;
-            long long left = outside_left + p;
+            unsigned long long total = outside_left + numUsed() + outside_right;
+            unsigned long long left = outside_left + p;
             trail->push_back((double)left / (double)total);
         }
 
@@ -1595,14 +1595,14 @@ namespace mongo {
 
         if ( !child.isNull() ) {
 
-            vector<long long> l_used_child;
-            vector<long long> r_used_child;
+            vector<unsigned long long> l_used_child;
+            vector<unsigned long long> r_used_child;
 
 
-            vector<long long> used;
+            vector<unsigned long long> used;
             BTREE(child)->numUsedAllLevels(used);
             std::cerr << "used all levels: ( ";
-            for (vector<long long>::const_iterator it = used.begin();
+            for (vector<unsigned long long>::const_iterator it = used.begin();
                  it != used.end();
                  it++) {
                 std::cerr << *it << ", ";
