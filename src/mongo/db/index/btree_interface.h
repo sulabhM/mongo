@@ -71,7 +71,9 @@ namespace mongo {
                                bool& found,
                                const DiskLoc& recordLoc,
                                int direction = 1,
-                               vector<double> *trail = NULL) const = 0;
+                               vector<double> *trail = NULL,
+                               vector<long long> *l_used = NULL,
+                               vector<long long> *r_used = NULL) const = 0;
 
         virtual void numUsedAllLevels(const DiskLoc& thisLoc,
                                       vector<long long> &used,

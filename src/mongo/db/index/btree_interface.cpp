@@ -72,7 +72,9 @@ namespace mongo {
                                bool& found,
                                const DiskLoc& recordLoc,
                                int direction,
-                               vector<double> *trail) const {
+                               vector<double> *trail,
+                               vector<long long> *l_used,
+                               vector<long long> *r_used) const {
             // FYI: direction has a default of 1
             return thisLoc.btree<Version>()->locate(
                 idx,
@@ -83,7 +85,9 @@ namespace mongo {
                 found,
                 recordLoc,
                 direction,
-                trail);
+                trail,
+                l_used,
+                r_used);
         }
 
         virtual void numUsedAllLevels(const DiskLoc& thisLoc,

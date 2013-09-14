@@ -1553,20 +1553,21 @@ namespace mongo {
     }
 
     template< class V >
-    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail) const {
+    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const BSONObj& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, vector<long long> *l_used, vector<long long> *r_used) const {
         KeyOwned k(key);
-        return locate(idx, thisLoc, k, order, pos, found, recordLoc, direction, trail);
+        return locate(idx, thisLoc, k, order, pos, found, recordLoc, direction, trail, l_used, r_used);
     }
 
     template< class V >
-    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail) const {
+    DiskLoc BtreeBucket<V>::locate(const IndexDetails& idx, const DiskLoc& thisLoc, const Key& key, const Ordering &order, int& pos, bool& found, const DiskLoc &recordLoc, int direction, vector<double> *trail, vector<long long> *l_used, vector<long long> *r_used) const {
         int p;
         found = find(idx, key, recordLoc, order, p, /*assertIfDup*/ false);
 
         // FIXME
+        // pop front from the given left_sums/right_sums, use them in addition to p and numUsed() to get the overall fraction of p for this level.
+        // if recursing:
         // element-wise sum children to the left of p (not inclusive, ie. [0, p) )
         // element-wise sum children to the right of p (not inclusive, ie. [p+1, n+1) )
-        // pop front from the given left_sums/right_sums, use them in addition to p and numUsed() to get the overall fraction of p for this level.
         // element-wise sum the remaining left_sums/right_sums onto the above left/right children sums.
         // pass these left/right sums into the recursive call below.
         // (if the given left_sum/right_sum is NULL, then we are up against the left/right edge of the tree.  so just ignore in that case.)
@@ -1581,6 +1582,10 @@ namespace mongo {
         DiskLoc child = this->childForPos(p);
 
         if ( !child.isNull() ) {
+
+            vector<long long> l_used_child;
+            vector<long long> r_used_child;
+
 
             vector<long long> used;
             BTREE(child)->numUsedAllLevels(used);
