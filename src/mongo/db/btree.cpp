@@ -1571,6 +1571,21 @@ namespace mongo {
         DiskLoc child = this->childForPos(p);
 
         if ( !child.isNull() ) {
+
+            vector<long long> used;
+            // FIXME: overloaded method which has depth = 0.
+            // Better is to swap the order and make depth = 0 be default/optional.
+            BTREE(child)->numUsedAllLevels(
+                0,
+                used);
+            std::cerr << "used all levels: ( ";
+            for (vector<long long>::const_iterator it = used.begin();
+                 it != used.end();
+                 it++) {
+                std::cerr << *it << ", ";
+            }
+            std::cerr << ")" << std::endl;
+
             DiskLoc l = BTREE(child)->locate(idx, child, key, order, pos, found, recordLoc, direction, trail);
             if ( !l.isNull() )
                 return l;
