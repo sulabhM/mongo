@@ -1636,16 +1636,6 @@ namespace mongo {
                 }
             }
 
-            deque<unsigned long long> used;
-            BTREE(child)->numUsedAllLevels(used);
-            std::cerr << "used all levels: ( ";
-            for (deque<unsigned long long>::const_iterator it = used.begin();
-                 it != used.end();
-                 it++) {
-                std::cerr << *it << ", ";
-            }
-            std::cerr << ")" << std::endl;
-
             DiskLoc l = BTREE(child)->locate(idx, child, key, order, pos, found, recordLoc, direction, trail, l_used, r_used);
 
             if (own_l) delete l_used;
