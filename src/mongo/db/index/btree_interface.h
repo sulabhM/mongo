@@ -74,8 +74,8 @@ namespace mongo {
                                vector<double> *trail = NULL) const = 0;
 
         virtual void numUsedAllLevels(const DiskLoc& thisLoc,
-                                      unsigned int depth,
-                                      vector<long long> &used) const = 0;
+                                      vector<long long> &used,
+                                      unsigned int depth = 0) const = 0;
 
         virtual bool wouldCreateDup(const IndexDetails& idx,
                                     const DiskLoc& thisLoc,

@@ -659,7 +659,7 @@ namespace mongo {
         void dump(unsigned depth=0) const;
 
         int numUsed() const;
-        void numUsedAllLevels(unsigned int depth, vector<long long> &used) const;
+        void numUsedAllLevels(vector<long long> &used, unsigned int depth = 0) const;
 
         /**
          * @return true if key exists in index

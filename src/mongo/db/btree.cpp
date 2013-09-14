@@ -1529,7 +1529,7 @@ namespace mongo {
     }
 
     template< class V >
-    void BtreeBucket<V>::numUsedAllLevels(unsigned int depth, vector<long long> &used) const {
+    void BtreeBucket<V>::numUsedAllLevels(vector<long long> &used, unsigned int depth) const {
         if (used.size() < depth + 1) {
             used.resize(depth + 1);
         }
@@ -1547,7 +1547,7 @@ namespace mongo {
             // There's probably a more direct way of doing this....
             DiskLoc child = this->childForPos(i);
             if ( !child.isNull() ) {
-                BTREE(child)->numUsedAllLevels(depth + 1, used);
+                BTREE(child)->numUsedAllLevels(used, depth + 1);
             }
         }
     }
@@ -1583,11 +1583,7 @@ namespace mongo {
         if ( !child.isNull() ) {
 
             vector<long long> used;
-            // FIXME: overloaded method which has depth = 0.
-            // Better is to swap the order and make depth = 0 be default/optional.
-            BTREE(child)->numUsedAllLevels(
-                0,
-                used);
+            BTREE(child)->numUsedAllLevels(used);
             std::cerr << "used all levels: ( ";
             for (vector<long long>::const_iterator it = used.begin();
                  it != used.end();

@@ -93,10 +93,7 @@ namespace mongo {
 
         vector<long long> used;
 
-        _interface->numUsedAllLevels(
-                _descriptor->getHead(),
-                0,
-                used);
+        _interface->numUsedAllLevels(_descriptor->getHead(), used);
 
         std::cerr << "USED ALL LEVELS: ( ";
         for (vector<long long>::const_iterator it = used.begin();

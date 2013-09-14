@@ -87,10 +87,9 @@ namespace mongo {
         }
 
         virtual void numUsedAllLevels(const DiskLoc& thisLoc,
-                                      unsigned int depth,
-                                      vector<long long> &used) const {
-            return thisLoc.btree<Version>()->numUsedAllLevels(depth,
-                used);
+                                      vector<long long> &used,
+                                      unsigned int depth) const {
+            return thisLoc.btree<Version>()->numUsedAllLevels(used, depth);
         }
 
         virtual bool wouldCreateDup(const IndexDetails& idx,
