@@ -112,6 +112,8 @@ namespace mongo {
         }
         std::cerr << ")" << std::endl;
 
+        // FIXME: now, get this excellent info out somehow better than stderr.
+
         skipUnusedKeys();
 
         return Status::OK();
