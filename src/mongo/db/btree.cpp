@@ -1563,7 +1563,6 @@ namespace mongo {
         int p;
         found = find(idx, key, recordLoc, order, p, /*assertIfDup*/ false);
 
-        // FIXME
         // pop front from the given left_sums/right_sums, use them in addition to p and numUsed() to get the overall fraction of p for this level.
         // if recursing:
         // element-wise sum children to the left of p (not inclusive, ie. [0, p) )
