@@ -123,10 +123,14 @@ namespace mongo {
                                   const vector<bool>& inclusive) {
         pair<DiskLoc, int> ignored;
 
+        //std::cerr << "BtreeIndexCursor::seek (2)" << std::endl;
+
         // Bucket is modified by customLocate.  Seeks start @ the root, so we set _bucket to the
         // root here.
         _bucket = _descriptor->getHead();
         _keyOffset = 0;
+
+        vector<double> trail;
 
         _interface->customLocate(
                 _bucket,
@@ -138,7 +142,18 @@ namespace mongo {
                 inclusive,
                 _ordering,
                 (int)_direction,
-                ignored);
+                ignored,
+                &trail);
+
+        std::cerr << "TRAIL2: ( " << std::setprecision(10);
+        for (vector<double>::const_iterator it = trail.begin();
+             it != trail.end();
+             it++) {
+            std::cerr << *it << ", ";
+        }
+        std::cerr << ")" << std::endl;
+
+        // FIXME: now, get this excellent info out somehow better than stderr.
 
         skipUnusedKeys();
 
@@ -148,6 +163,7 @@ namespace mongo {
     Status BtreeIndexCursor::skip(const BSONObj &keyBegin, int keyBeginLen, bool afterKey,
                                   const vector<const BSONElement*>& keyEnd,
                                   const vector<bool>& keyEndInclusive) {
+        //std::cerr << "BtreeIndexCursor::skip" << std::endl;
         _interface->advanceTo(
             _bucket,
             _keyOffset,
@@ -189,6 +205,7 @@ namespace mongo {
         // _keyOffset could be -1 if the bucket was deleted.  When buckets are deleted, the
         // Btree calls a clientcursor function that calls down to all BTree buckets.  Really,
         // this deletion thing should be kept BTree-internal.
+        //std::cerr << "BtreeIndexCursor::restorePosition" << std::endl;
         if (_keyOffset >= 0) {
             verify(!_savedKey.isEmpty());
 
@@ -270,6 +287,7 @@ namespace mongo {
 
     // Move to the next/prev. key.  Used by normal getNext and also skipping unused keys.
     void BtreeIndexCursor::advance(const char* caller) {
+        //std::cerr << "BtreeIndexCursor::advance" << std::endl;
         _bucket = _interface->advance(_bucket, _keyOffset, _direction, caller);
     }
 

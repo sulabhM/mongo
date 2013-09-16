@@ -763,7 +763,7 @@ namespace mongo {
         void advanceTo(DiskLoc &thisLoc, int &keyOfs, const BSONObj &keyBegin, int keyBeginLen, bool afterKey, const vector< const BSONElement * > &keyEnd, const vector< bool > &keyEndInclusive, const Ordering &order, int direction ) const;
 
         /** Locate a key with fields comprised of a combination of keyBegin fields and keyEnd fields. */
-        static void customLocate(DiskLoc &locInOut, int &keyOfs, const BSONObj &keyBegin, int keyBeginLen, bool afterKey, const vector< const BSONElement * > &keyEnd, const vector< bool > &keyEndInclusive, const Ordering &order, int direction, pair< DiskLoc, int > &bestParent ) ;
+        static void customLocate(DiskLoc &locInOut, int &keyOfs, const BSONObj &keyBegin, int keyBeginLen, bool afterKey, const vector< const BSONElement * > &keyEnd, const vector< bool > &keyEndInclusive, const Ordering &order, int direction, pair< DiskLoc, int > &bestParent, vector<double> *trail = NULL, deque<unsigned long long> *l_used = NULL, deque<unsigned long long> *r_used = NULL ) ;
 
         /** @return head of the btree by traversing from current bucket. */
         const DiskLoc getHead(const DiskLoc& thisLoc) const;

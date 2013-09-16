@@ -1580,7 +1580,7 @@ namespace mongo {
             if (r_used && r_used->size() > 0) {
                 outside_right += r_used->front();
             }
-            unsigned long long total = outside_left + numUsed() + outside_right;
+            unsigned long long total = outside_left + this->numUsed() + outside_right;
             unsigned long long left = outside_left + p;
             trail->push_back((double)left / (double)total);
         }
@@ -1651,6 +1651,9 @@ namespace mongo {
             return pos == this->n ? DiskLoc() /*theend*/ : thisLoc;
     }
 
+    // Binary search within a single bucket.
+    // Does not handle the extremities, ie. < first key or > last key.
+    // Hence the foul interaction with customLocate.
     template< class V >
     bool BtreeBucket<V>::customFind( int l, int h, const BSONObj &keyBegin, int keyBeginLen, bool afterKey, const vector< const BSONElement * > &keyEnd, const vector< bool > &keyEndInclusive, const Ordering &order, int direction, DiskLoc &thisLoc, int &keyOfs, pair< DiskLoc, int > &bestParent ) {
         const BtreeBucket<V> * bucket = BTREE(thisLoc);
@@ -1745,15 +1748,33 @@ namespace mongo {
     template< class V >
     void BtreeBucket<V>::customLocate(DiskLoc &locInOut, int &keyOfs, const BSONObj &keyBegin, int keyBeginLen, bool afterKey, 
                                       const vector< const BSONElement * > &keyEnd, const vector< bool > &keyEndInclusive, 
-                                      const Ordering &order, int direction, pair< DiskLoc, int > &bestParent ) {
+                                      const Ordering &order, int direction, pair< DiskLoc, int > &bestParent,
+                                      vector<double> *trail, deque<unsigned long long> *l_used, deque<unsigned long long> *r_used) {
         dassert( direction == 1 || direction == -1 );
         const BtreeBucket<V> *bucket = BTREE(locInOut);
         if ( bucket->n == 0 ) {
             locInOut = DiskLoc();
             return;
         }
+
+        bool own_l = false;
+        bool own_r = false;
+
+        // HMMMMMMM
+        //// FIXME: remove l_used and r_used from the function signature, since they're not needed in this non-recursive implementation.
+        //// For now, just use them anyway.
+        //if ( ! l_used ) {
+        //    l_used = new deque<unsigned long long>();
+        //    own_l = true;
+        //}
+        //if ( ! r_used ) {
+        //    r_used = new deque<unsigned long long>();
+        //    own_r = true;
+        //}
+
         // go down until find smallest/biggest >=/<= target
         while( 1 ) {
+
             int l = 0;
             int h = bucket->n - 1;
 
@@ -1767,6 +1788,22 @@ namespace mongo {
             if ( firstCheck ) {
                 DiskLoc next;
                 keyOfs = z;
+
+                // HERE: add to trail here.
+                if (trail) {
+                    unsigned long long outside_left = 0;
+                    if (l_used && l_used->size() > 0) {
+                        outside_left += l_used->front();
+                    }
+                    unsigned long long outside_right = 0;
+                    if (r_used && r_used->size() > 0) {
+                        outside_right += r_used->front();
+                    }
+                    unsigned long long total = outside_left + bucket->numUsed() + outside_right;
+                    unsigned long long left = outside_left + keyOfs;
+                    trail->push_back((double)left / (double)total);
+                }
+
                 if ( direction > 0 ) {
                     dassert( z == 0 );
                     next = bucket->k( 0 ).prevChildBucket;
@@ -1776,12 +1813,53 @@ namespace mongo {
                 }
                 if ( !next.isNull() ) {
                     bestParent = pair< DiskLoc, int >( locInOut, keyOfs );
+
+                    // HERE: "recurse" downwards here.
+                    if (trail) {
+                        if ( ! l_used ) {
+                            l_used = new deque<unsigned long long>();
+                            own_l = true;
+                        } else {
+                            l_used->pop_front();
+                        }
+                        if ( ! r_used ) {
+                            r_used = new deque<unsigned long long>();
+                            own_r = true;
+                        } else {
+                            r_used->pop_front();
+                        }
+
+                        for (int i = 0; i < keyOfs; i++) {
+                            if ( ! bucket->isUsed(i)) {
+                                continue;
+                            }
+
+                            // There's probably a more direct way of doing this....
+                            DiskLoc child = bucket->childForPos(i);
+                            if ( !child.isNull() ) {
+                                BTREE(child)->numUsedAllLevels(*l_used);
+                            }
+                        }
+
+                        for (int i = keyOfs + 1; i <= bucket->n; i++) {
+                            if ( ! bucket->isUsed(i)) {
+                                continue;
+                            }
+
+                            // There's probably a more direct way of doing this....
+                            DiskLoc child = bucket->childForPos(i);
+                            if ( !child.isNull() ) {
+                                BTREE(child)->numUsedAllLevels(*r_used);
+                            }
+                        }
+                    }
+
                     locInOut = next;
                     bucket = BTREE(locInOut);
                     continue;
                 }
                 else {
-                    return;
+                    goto _return;
                 }
             }
 
@@ -1790,19 +1868,76 @@ namespace mongo {
 
             if ( secondCheck ) {
                 DiskLoc next;
+                keyOfs = h-z;   // looks like this line was "forgotten" (since it isn't actully necessary this time around - except I need it).
                 if ( direction > 0 ) {
                     next = bucket->nextChild;
                 }
                 else {
                     next = bucket->k( 0 ).prevChildBucket;
                 }
+
+                // HERE: add to trail here.
+                if (trail) {
+                    unsigned long long outside_left = 0;
+                    if (l_used && l_used->size() > 0) {
+                        outside_left += l_used->front();
+                    }
+                    unsigned long long outside_right = 0;
+                    if (r_used && r_used->size() > 0) {
+                        outside_right += r_used->front();
+                    }
+                    unsigned long long total = outside_left + bucket->numUsed() + outside_right;
+                    unsigned long long left = outside_left + keyOfs;
+                    trail->push_back((double)left / (double)total);
+                }
+
                 if ( next.isNull() ) {
                     // if bestParent is null, we've hit the end and locInOut gets set to DiskLoc()
                     locInOut = bestParent.first;
                     keyOfs = bestParent.second;
-                    return;
+                    goto _return;
                 }
                 else {
+                    // HERE: "recurse" downwards here.
+                    if (trail) {
+                        if ( ! l_used ) {
+                            l_used = new deque<unsigned long long>();
+                            own_l = true;
+                        } else {
+                            l_used->pop_front();
+                        }
+                        if ( ! r_used ) {
+                            r_used = new deque<unsigned long long>();
+                            own_r = true;
+                        } else {
+                            r_used->pop_front();
+                        }
+
+                        for (int i = 0; i < keyOfs; i++) {
+                            if ( ! bucket->isUsed(i)) {
+                                continue;
+                            }
+
+                            // There's probably a more direct way of doing this....
+                            DiskLoc child = bucket->childForPos(i);
+                            if ( !child.isNull() ) {
+                                BTREE(child)->numUsedAllLevels(*l_used);
+                            }
+                        }
+
+                        for (int i = keyOfs + 1; i <= bucket->n; i++) {
+                            if ( ! bucket->isUsed(i)) {
+                                continue;
+                            }
+
+                            // There's probably a more direct way of doing this....
+                            DiskLoc child = bucket->childForPos(i);
+                            if ( !child.isNull() ) {
+                                BTREE(child)->numUsedAllLevels(*r_used);
+                            }
+                        }
+                    }
+
                     locInOut = next;
                     bucket = BTREE(locInOut);
                     continue;
@@ -1810,10 +1945,70 @@ namespace mongo {
             }
 
             if ( !customFind( l, h, keyBegin, keyBeginLen, afterKey, keyEnd, keyEndInclusive, order, direction, locInOut, keyOfs, bestParent ) ) {
-                return;
+                goto _return;
             }
+
+            // HERE: add to trail here.
+            // customFind only returns when (l + 1 = h, and it sets keyOfs to the correct value (depending on direction) for us)
+            if (trail) {
+                unsigned long long outside_left = 0;
+                if (l_used && l_used->size() > 0) {
+                    outside_left += l_used->front();
+                }
+                unsigned long long outside_right = 0;
+                if (r_used && r_used->size() > 0) {
+                    outside_right += r_used->front();
+                }
+                unsigned long long total = outside_left + bucket->numUsed() + outside_right;
+                unsigned long long left = outside_left + keyOfs;
+                trail->push_back((double)left / (double)total);
+            }
+
+            // HERE: "recurse" downwards here.
+            if (trail) {
+                if ( ! l_used ) {
+                    l_used = new deque<unsigned long long>();
+                    own_l = true;
+                } else {
+                    l_used->pop_front();
+                }
+                if ( ! r_used ) {
+                    r_used = new deque<unsigned long long>();
+                    own_r = true;
+                } else {
+                    r_used->pop_front();
+                }
+
+                for (int i = 0; i < keyOfs; i++) {
+                    if ( ! bucket->isUsed(i)) {
+                        continue;
+                    }
+
+                    // There's probably a more direct way of doing this....
+                    DiskLoc child = bucket->childForPos(i);
+                    if ( !child.isNull() ) {
+                        BTREE(child)->numUsedAllLevels(*l_used);
+                    }
+                }
+
+                for (int i = keyOfs + 1; i <= bucket->n; i++) {
+                    if ( ! bucket->isUsed(i)) {
+                        continue;
+                    }
+
+                    // There's probably a more direct way of doing this....
+                    DiskLoc child = bucket->childForPos(i);
+                    if ( !child.isNull() ) {
+                        BTREE(child)->numUsedAllLevels(*r_used);
+                    }
+                }
+            }
+
             bucket = BTREE(locInOut);
         }
+_return:
+        if (own_l) delete l_used;
+        if (own_r) delete r_used;
     }
 
     /** @thisLoc disk location of *this */

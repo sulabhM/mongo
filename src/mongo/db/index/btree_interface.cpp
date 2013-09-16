@@ -118,7 +118,10 @@ namespace mongo {
                                   const vector<bool>& keyEndInclusive,
                                   const Ordering& order,
                                   int direction,
-                                  pair<DiskLoc, int>& bestParent) {
+                                  pair<DiskLoc, int>& bestParent,
+                                  vector<double> *trail,
+                                  deque<unsigned long long> *l_used,
+                                  deque<unsigned long long> *r_used) {
             locInOut.btree<Version>()->customLocate(
                 locInOut,
                 keyOfs,
@@ -129,7 +132,10 @@ namespace mongo {
                 keyEndInclusive,
                 order,
                 direction,
-                bestParent);
+                bestParent,
+                trail,
+                l_used,
+                r_used);
         }
 
         virtual void advanceTo(DiskLoc &thisLoc,

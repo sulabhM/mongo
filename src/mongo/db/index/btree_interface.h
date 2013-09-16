@@ -93,7 +93,10 @@ namespace mongo {
                                   const vector<bool>& keyEndInclusive,
                                   const Ordering& order,
                                   int direction,
-                                  pair<DiskLoc, int>& bestParent) = 0 ;
+                                  pair<DiskLoc, int>& bestParent,
+                                  vector<double> *trail = NULL,
+                                  deque<unsigned long long> *l_used = NULL,
+                                  deque<unsigned long long> *r_used = NULL) = 0 ;
 
         virtual void advanceTo(DiskLoc &thisLoc,
                                int &keyOfs,
