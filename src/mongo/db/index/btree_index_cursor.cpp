@@ -104,13 +104,15 @@ namespace mongo {
                 _direction,
                 &trail);
 
-        std::cerr << "TRAIL: ( " << std::setprecision(10);
+        std::stringstream msg;
+        msg << "TRAIL: ( " << std::setprecision(10);
         for (vector<double>::const_iterator it = trail.begin();
              it != trail.end();
              it++) {
-            std::cerr << *it << ", ";
+            msg << *it << ", ";
         }
-        std::cerr << ")" << std::endl;
+        msg << ")" << std::endl;
+        std::cerr << msg.str();
 
         // FIXME: now, get this excellent info out somehow better than stderr.
 
@@ -145,13 +147,15 @@ namespace mongo {
                 ignored,
                 &trail);
 
-        std::cerr << "TRAIL2: ( " << std::setprecision(10);
+        std::stringstream msg;
+        msg << "TRAIL2: ( " << std::setprecision(10);
         for (vector<double>::const_iterator it = trail.begin();
              it != trail.end();
              it++) {
-            std::cerr << *it << ", ";
+            msg << *it << ", ";
         }
-        std::cerr << ")" << std::endl;
+        msg << ")" << std::endl;
+        std::cerr << msg.str();
 
         // FIXME: now, get this excellent info out somehow better than stderr.
 
