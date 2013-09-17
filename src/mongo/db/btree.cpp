@@ -1573,25 +1573,15 @@ namespace mongo {
 
         if (trail) {
             unsigned long long outside_left = 0;
-            //if (l_used) std::cerr << "l_used->size() " << l_used->size() << std::endl;
             if (l_used && l_used->size() > 0) {
                 outside_left += l_used->front();
-                //std::cerr << "set outside_left" << std::endl;
             }
             unsigned long long outside_right = 0;
-            //if (r_used) std::cerr << "r_used->size() " << r_used->size() << std::endl;
             if (r_used && r_used->size() > 0) {
                 outside_right += r_used->front();
-                //std::cerr << "set outside_right" << std::endl;
             }
-            //std::cerr << "outside_left " << outside_left << std::endl;
-            //std::cerr << "outside_right " << outside_right << std::endl;
-            //std::cerr << "p " << p << std::endl;
-            //std::cerr << "numUsed() " << this->numUsed() << std::endl;
             unsigned long long total = outside_left + this->numUsed() + outside_right;
             unsigned long long left = outside_left + p;
-            //std::cerr << "total " << total << std::endl;
-            //std::cerr << "left " << left << std::endl;
             trail->push_back((double)left / (double)total);
         }
 
