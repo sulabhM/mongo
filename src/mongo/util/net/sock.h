@@ -233,20 +233,20 @@ namespace mongo {
             return _fdCreationMicroSec;
         }
 
+        void _handleRecvError(int ret, int len);
+        MONGO_COMPILER_NORETURN void _handleSendError(int ret, const char* context);
+
     private:
         void _init();
 
         /** sends dumbly, just each buffer at a time */
         void _send( const vector< pair< char *, int > > &data, const char *context );
 
-        /** raw send, same semantics as ::send */
-        int _send( const char * data , int len );
+        /** raw send, same semantics as ::send with an additional context parameter */
+        int _send( const char * data , int len, const char * context );
 
         /** raw recv, same semantics as ::recv */
         int _recv( char * buf , int max );
-
-        void _handleRecvError(int ret, int len, int* retries);
-        MONGO_COMPILER_NORETURN void _handleSendError(int ret, const char* context);
 
         int _fd;
         uint64_t _fdCreationMicroSec;

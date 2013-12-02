@@ -52,6 +52,7 @@ namespace mongo {
     MONGO_DISALLOW_COPYING(SSLManager);
     public:
         explicit SSLManager(const SSLParams& params);
+        virtual ~SSLManager();
 
         /**
          * Initiates a TLS connection.
@@ -84,6 +85,15 @@ namespace mongo {
          */
         static int password_cb( char *buf,int num, int rwflag,void *userdata );
         static int verify_cb(int ok, X509_STORE_CTX *ctx);
+
+        /**
+         * ssl.h wrappers
+         */
+        int SSL_read(SSL* ssl, void* buf, int num);
+
+        int SSL_write(SSL* ssl, const void* buf, int num);
+
+        int SSL_shutdown(SSL* ssl);
 
     private:
         SSL_CTX* _context;
@@ -128,10 +138,9 @@ namespace mongo {
         void _setupFIPS();
 
         /*
-         * Wrapper for SSL_Connect() that handles SSL_ERROR_WANT_READ,
-         * see SERVER-7940
+         * sub function for checking the result of an SSL operation
          */
-        int _ssl_connect(SSL* ssl);
+        bool _doneWithSSLOp(SSL* conn, int status);
 
         /*
          * Initialize the SSL Library.

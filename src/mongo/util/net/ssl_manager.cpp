@@ -173,6 +173,10 @@ namespace mongo {
         }
     }
 
+    SSLManager::~SSLManager() {
+        CRYPTO_set_id_callback(0);
+    }
+
     int SSLManager::password_cb(char *buf,int num, int rwflag,void *userdata) {
         SSLManager* sm = static_cast<SSLManager*>(userdata);
         std::string pass = sm->_password;
@@ -182,6 +186,39 @@ namespace mongo {
 
     int SSLManager::verify_cb(int ok, X509_STORE_CTX *ctx) {
 	return 1; // always succeed; we will catch the error in our get_verify_result() call
+    }
+
+    int SSLManager::SSL_read(SSL* ssl, void* buf, int num) {
+        int status;
+        do {
+            status = ::SSL_read(ssl, buf, num);
+        } while(!_doneWithSSLOp(ssl, status));
+
+        if (status <= 0)
+            _handleSSLError(SSL_get_error(ssl, status));
+        return status;
+    }
+
+    int SSLManager::SSL_write(SSL* ssl, const void* buf, int num) {
+        int status;
+        do {
+            status = ::SSL_write(ssl, buf, num);
+        } while(!_doneWithSSLOp(ssl, status));
+
+        if (status <= 0)
+            _handleSSLError(SSL_get_error(ssl, status));
+        return status;
+    }
+
+    int SSLManager::SSL_shutdown(SSL* ssl) {
+        int status;
+        do {
+            status = ::SSL_shutdown(ssl);
+        } while(!_doneWithSSLOp(ssl, status));
+
+        if (status < 0)
+            _handleSSLError(SSL_get_error(ssl, status));
+        return status;
     }
 
     void SSLManager::_setupFIPS() {
@@ -256,6 +293,19 @@ namespace mongo {
         return true;
     }
                 
+    bool SSLManager::_doneWithSSLOp(SSL* ssl, int status) {
+        int sslErr = SSL_get_error(ssl, status);
+        switch (sslErr) {
+            case SSL_ERROR_NONE:
+                return true;
+            case SSL_ERROR_WANT_WRITE:
+            case SSL_ERROR_WANT_READ:
+                return false;
+            default:
+                return true;
+        }
+    }
+
     SSL* SSLManager::_secure(int fd) {
         // This just ensures that SSL multithreading support is set up for this thread,
         // if it's not already.
@@ -274,25 +324,13 @@ namespace mongo {
         return ssl;
     }
 
-    int SSLManager::_ssl_connect(SSL* ssl) {
-        int ret = 0;
-        for (int i=0; i<3; ++i) {
-            ret = SSL_connect(ssl);
-            if (ret == 1) 
-                return ret;
-            int code = SSL_get_error(ssl, ret);
-            // Call SSL_connect again if we get SSL_ERROR_WANT_READ;
-            // otherwise return error to caller.
-            if (code != SSL_ERROR_WANT_READ)
-                return ret;
-        }
-        // Give up and return connection-failure error to user
-        return ret;
-    }
     SSL* SSLManager::connect(int fd) {
         SSL* ssl = _secure(fd);
         ScopeGuard guard = MakeGuard(::SSL_free, ssl);
-        int ret = _ssl_connect(ssl);
+        int ret;
+        do {
+            ret = ::SSL_connect(ssl);
+        } while(!_doneWithSSLOp(ssl, ret));
         if (ret != 1)
             _handleSSLError(SSL_get_error(ssl, ret));
         guard.Dismiss();
@@ -302,7 +340,10 @@ namespace mongo {
     SSL* SSLManager::accept(int fd) {
         SSL* ssl = _secure(fd);
         ScopeGuard guard = MakeGuard(::SSL_free, ssl);
-        int ret = SSL_accept(ssl);
+        int ret;
+        do {
+            ret = ::SSL_accept(ssl);
+        } while(!_doneWithSSLOp(ssl, ret));
         if (ret != 1)
             _handleSSLError(SSL_get_error(ssl, ret));
         guard.Dismiss();

@@ -407,7 +407,7 @@ namespace mongo {
         close();
 #ifdef MONGO_SSL
         if ( _ssl ) {
-            SSL_shutdown( _ssl );
+            _sslAccepted->SSL_shutdown( _ssl );
             SSL_free( _ssl );
             _ssl = 0;
         }
@@ -518,13 +518,18 @@ namespace mongo {
         return true;
     }
 
-    int Socket::_send( const char * data , int len ) {
+    int Socket::_send( const char * data , int len, const char * context ) {
 #ifdef MONGO_SSL
         if ( _ssl ) {
-            return SSL_write( _ssl , data , len );
+            return _sslAccepted->SSL_write( _ssl , data , len );
         }
 #endif
-        return ::send( _fd , data , len , portSendFlags );
+        int ret = ::send( _fd , data , len , portSendFlags );
+        if (ret < 0) {
+            _handleSendError(ret, context);
+        }
+        return ret;
+
     }
 
     // sends all data or throws an exception
@@ -539,11 +544,8 @@ namespace mongo {
 #endif
             }
             else {
-                ret = _send(data, len);
+                ret = _send(data, len, context);
             }
-
-            if (ret == -1)
-                _handleSendError(ret, context);
 
             _bytesOut += ret;
 
@@ -642,7 +644,6 @@ namespace mongo {
     }
 
     void Socket::recv( char * buf , int len ) {
-        int retries = 0;
         while( len > 0 ) {
             int ret = -1;
             if (MONGO_FAIL_POINT(throwSockExcep)) {
@@ -654,10 +655,6 @@ namespace mongo {
             }
             else {
                 ret = unsafe_recv(buf, len);
-            }
-            if (ret <= 0) {
-                _handleRecvError(ret, len, &retries);
-                continue;
             }
 
             if ( len <= 4 && ret != len )
@@ -679,21 +676,18 @@ namespace mongo {
     int Socket::_recv( char *buf, int max ) {
 #ifdef MONGO_SSL
         if ( _ssl ){
-            return SSL_read( _ssl , buf , max );
+            return _sslAccepted->SSL_read( _ssl , buf , max );
         }
 #endif
-        return ::recv( _fd , buf , max , portRecvFlags );
+        int ret = ::recv( _fd , buf , max , portRecvFlags );
+        if (ret <= 0) {
+            _handleRecvError(ret, max);
+            return 0;
+        }
+        return ret;
     }
 
     void Socket::_handleSendError(int ret, const char* context) {
-#ifdef MONGO_SSL
-        if (_ssl) {
-            LOG(_logLevel) << "SSL Error ret: " << ret << " err: " << SSL_get_error(_ssl , ret) 
-                           << " " << ERR_error_string(ERR_get_error(), NULL) 
-                           << endl;
-            throw SocketException(SocketException::SEND_ERROR , remoteString());
-        }
-#endif
 
 #if defined(_WIN32)
         const int mongo_errno = WSAGetLastError();
@@ -713,21 +707,13 @@ namespace mongo {
         }
     }
 
-    void Socket::_handleRecvError(int ret, int len, int* retries) {
+    void Socket::_handleRecvError(int ret, int len) {
         if (ret == 0) {
             LOG(3) << "Socket recv() conn closed? " << remoteString() << endl;
             throw SocketException(SocketException::CLOSED , remoteString());
         }
      
         // ret < 0
-#ifdef MONGO_SSL
-        if (_ssl) {
-            LOG(_logLevel) << "SSL Error ret: " << ret << " err: " << SSL_get_error(_ssl , ret) 
-                           << " " << ERR_error_string(ERR_get_error(), NULL) 
-                           << endl;
-            throw SocketException(SocketException::RECV_ERROR, remoteString());
-        }
-#endif
 
 #if defined(_WIN32)
         int e = WSAGetLastError();
@@ -735,7 +721,7 @@ namespace mongo {
         int e = errno;
 # if defined(EINTR)
         if (e == EINTR) {
-            LOG(_logLevel) << "EINTR retry " << ++*retries << endl;
+            LOG(_logLevel) << "EINTR returned from recv(), retrying" << endl;
             return;
         }
 # endif
