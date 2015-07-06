@@ -1,5 +1,12 @@
+// Check that the output from printShardingStatus() (aka sh.status())
+// contains important information that it should, like the major section
+// headings and the names of sharded collections and their shard keys. 
 
-// SERVER-XXXX to move this into utils.js
+
+(function () {
+
+
+// SERVER-XXXX (not filed yet) to move this into utils.js
 // jstests/auth/show_log_auth.js does something similar and could also benefit from this
 print.captureAllOutput = function (fn, args) {
     var res = {};
@@ -13,7 +20,7 @@ print.captureAllOutput = function (fn, args) {
     return res;
 }
 
-// SERVER-XXXX to move this into types.js next to startsWith() and endsWith()
+// SERVER-XXXX (not filed yet) to move this into types.js next to startsWith() and endsWith()
 // Polyfill a default implementation of String.includes() (defined in ES6)
 if (typeof String.prototype.includes === 'undefined') {
     String.prototype.includes = function(it) { return this.indexOf(it) >= 0; };
@@ -46,7 +53,7 @@ function assertPresentInOutput(content, what) {
 
 assertPresentInOutput("shards:", "section header");
 assertPresentInOutput("databases:", "section header");
-//assertPresentInOutput("balancer:", "section header");   // After SERVER-18506 has gone into master
+//assertPresentInOutput("balancer:", "section header");   // After SERVER-18506 has been merged
 
 assertPresentInOutput(dbName, "database");
 assertPresentInOutput(collName, "collection");
@@ -54,3 +61,4 @@ assertPresentInOutput(shardKeyName, "shard key");
 
 st.stop();
 
+})();
