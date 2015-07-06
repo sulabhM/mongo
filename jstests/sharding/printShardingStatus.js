@@ -1,6 +1,6 @@
 // Check that the output from printShardingStatus() (aka sh.status())
 // contains important information that it should, like the major section
-// headings and the names of sharded collections and their shard keys. 
+// headings and the names of sharded collections and their shard keys.
 
 
 (function () {
