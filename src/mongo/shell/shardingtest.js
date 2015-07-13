@@ -799,10 +799,10 @@ printShardingStatus = function( configDB , verbose ){
                             output( "\t\t" + coll._id );
                             output( "\t\t\tshard key: " + tojson(coll.key) );
                             if ( coll.unique ) {
-                                output( "\t\t\tunique: true" );
+                                output( "\t\t\tunique: true" + ((coll.unique != true && coll.unique != false && coll.unique !== undefined) ? (" (unique: " + tojson(coll.unique) + ")") : "") );
                             }
                             if ( coll.noBalance ) {
-                                output( "\t\t\tbalancing: false" );
+                                output( "\t\t\tbalancing: false" + ((coll.noBalance != true && coll.noBalance != false && coll.noBalance !== undefined) ? (" (noBalance: " + tojson(coll.noBalance) + ")") : "") );
                             }
                             output( "\t\t\tchunks:" );
 
