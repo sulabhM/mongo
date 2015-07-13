@@ -40,9 +40,17 @@ assert.commandWorked( admin.runCommand({ shardCollection: "test.test1", key: { _
 assert.commandWorked( admin.runCommand({ shardCollection: "test.test2", key: { _id: 1} }) );
 assert.commandWorked( admin.runCommand({ shardCollection: "test.test3", key: { _id: 1}, unique: true }) );
 assert.commandWorked( admin.runCommand({ shardCollection: "test.test4", key: { _id: 1}, unique: true }) );
+assert.commandWorked( admin.runCommand({ shardCollection: "test.test6", key: { _id: 1} }) );
+assert.commandWorked( admin.runCommand({ shardCollection: "test.test7", key: { _id: 1}, unique: true }) );
+assert.commandWorked( admin.runCommand({ shardCollection: "test.test8", key: { _id: 1}, unique: true }) );
 
 assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test2" }, { $set : { "noBalance" : true } }) );
 assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test4" }, { $set : { "noBalance" : true } }) );
+
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test6" }, { $set : { "noBalance" : "truthy" } }) );
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test7" }, { $set : { "unique" : "truthy" } }) );
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test8" }, { $set : { "noBalance" : "truthy" } }) );
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test8" }, { $set : { "unique" : "truthy" } }) );
 
 var res = print.captureAllOutput( function () { return st.printShardingStatus(); } );
 var output = res.output.join("\n");
