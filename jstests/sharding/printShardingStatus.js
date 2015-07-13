@@ -35,6 +35,13 @@ var key = {};
 key[shardKeyName] = 1;
 assert.commandWorked( admin.runCommand({ shardCollection: nsName, key: key }) );
 
+// move this stuff to printShardingStatus2.js
+// this is a stupid way to do it, because it's untestable without binding to the current (stupid) output format.
+// instead have a helper function, which takes the collection name, what the unique/nobalance values should be,
+// and string(s) to check for in the output.
+// the function will shard the collection, set it up accordingly, get the output, check it, and then drop the collection.
+// the check will automatically include checking that the *previous* namespaces are *NOT* in the output (to prevent tainting)
+// from previous runs.  so it will need to remember each ns given, and check that it hasn't seen it before.
 assert.commandWorked( admin.runCommand({ enableSharding: "test" }) );
 assert.commandWorked( admin.runCommand({ shardCollection: "test.test1", key: { _id: 1} }) );
 assert.commandWorked( admin.runCommand({ shardCollection: "test.test2", key: { _id: 1} }) );
@@ -47,10 +54,10 @@ assert.commandWorked( admin.runCommand({ shardCollection: "test.test8", key: { _
 assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test2" }, { $set : { "noBalance" : true } }) );
 assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test4" }, { $set : { "noBalance" : true } }) );
 
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test6" }, { $set : { "noBalance" : "truthy" } }) );
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test7" }, { $set : { "unique" : "truthy" } }) );
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test8" }, { $set : { "noBalance" : "truthy" } }) );
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test8" }, { $set : { "unique" : "truthy" } }) );
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test6" }, { $set : { "noBalance" : "truthy noBalance value 1" } }) );
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test7" }, { $set : { "unique" : "truthy unique value 1" } }) );
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test8" }, { $set : { "noBalance" : "truthy noBalance value 2" } }) );
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test8" }, { $set : { "unique" : "truthy unique value 2" } }) );
 
 var res = print.captureAllOutput( function () { return st.printShardingStatus(); } );
 var output = res.output.join("\n");
