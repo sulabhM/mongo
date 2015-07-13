@@ -798,6 +798,12 @@ printShardingStatus = function( configDB , verbose ){
                         if ( ! coll.dropped ){
                             output( "\t\t" + coll._id );
                             output( "\t\t\tshard key: " + tojson(coll.key) );
+                            if ( coll.unique ) {
+                                output( "\t\t\tunique: true" );
+                            }
+                            if ( coll.noBalance ) {
+                                output( "\t\t\tbalancing: false" );
+                            }
                             output( "\t\t\tchunks:" );
 
                             res = configDB.chunks.aggregate( { $match : { ns : coll._id } } ,
