@@ -796,14 +796,8 @@ printShardingStatus = function( configDB , verbose ){
                     RegExp.escape(db._id) + "\\." ) } ).
                     sort( { _id : 1 } ).forEach( function( coll ){
                         if ( ! coll.dropped ){
-                            output( "\t\t" + coll._id );
-                            output( "\t\t\tshard key: " + tojson(coll.key) );
-                            if ( coll.unique ) {
-                                output( "\t\t\tunique: true" + ((coll.unique != true && coll.unique != false && coll.unique !== undefined) ? (" (unique: " + tojson(coll.unique) + ")") : "") );
-                            }
-                            if ( coll.noBalance ) {
-                                output( "\t\t\tbalancing: false" + ((coll.noBalance != true && coll.noBalance != false && coll.noBalance !== undefined) ? (" (noBalance: " + tojson(coll.noBalance) + ")") : "") );
-                            }
+                            output( "\t\t" + coll._id + ( coll.noBalance ? " (balancing disabled)" : "") );
+                            output( "\t\t\tshard key: " + tojson(coll.key) + ( coll.unique ? " (unique)" : "") );
                             output( "\t\t\tchunks:" );
 
                             res = configDB.chunks.aggregate( { $match : { ns : coll._id } } ,
