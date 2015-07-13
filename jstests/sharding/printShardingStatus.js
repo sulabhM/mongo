@@ -35,6 +35,15 @@ var key = {};
 key[shardKeyName] = 1;
 assert.commandWorked( admin.runCommand({ shardCollection: nsName, key: key }) );
 
+assert.commandWorked( admin.runCommand({ enableSharding: "test" }) );
+assert.commandWorked( admin.runCommand({ shardCollection: "test.test1", key: { _id: 1} }) );
+assert.commandWorked( admin.runCommand({ shardCollection: "test.test2", key: { _id: 1} }) );
+assert.commandWorked( admin.runCommand({ shardCollection: "test.test3", key: { _id: 1}, unique: true }) );
+assert.commandWorked( admin.runCommand({ shardCollection: "test.test4", key: { _id: 1}, unique: true }) );
+
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test2" }, { $set : { "noBalance" : true } }) );
+assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test4" }, { $set : { "noBalance" : true } }) );
+
 var res = print.captureAllOutput( function () { return st.printShardingStatus(); } );
 var output = res.output.join("\n");
 jsTestLog(output);
