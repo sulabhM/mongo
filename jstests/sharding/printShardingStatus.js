@@ -35,46 +35,112 @@ var key = {};
 key[shardKeyName] = 1;
 assert.commandWorked( admin.runCommand({ shardCollection: nsName, key: key }) );
 
-// move this stuff to printShardingStatus2.js
-// this is a stupid way to do it, because it's untestable without binding to the current (stupid) output format.
-// instead have a helper function, which takes the collection name, what the unique/nobalance values should be,
-// and string(s) to check for in the output.
-// the function will shard the collection, set it up accordingly, get the output, check it, and then drop the collection.
-// the check will automatically include checking that the *previous* namespaces are *NOT* in the output (to prevent tainting)
-// from previous runs.  so it will need to remember each ns given, and check that it hasn't seen it before.
-assert.commandWorked( admin.runCommand({ enableSharding: "test" }) );
-assert.commandWorked( admin.runCommand({ shardCollection: "test.test1", key: { _id: 1} }) );
-assert.commandWorked( admin.runCommand({ shardCollection: "test.test2", key: { _id: 1} }) );
-assert.commandWorked( admin.runCommand({ shardCollection: "test.test3", key: { _id: 1}, unique: true }) );
-assert.commandWorked( admin.runCommand({ shardCollection: "test.test4", key: { _id: 1}, unique: true }) );
-assert.commandWorked( admin.runCommand({ shardCollection: "test.test6", key: { _id: 1} }) );
-assert.commandWorked( admin.runCommand({ shardCollection: "test.test7", key: { _id: 1}, unique: true }) );
-assert.commandWorked( admin.runCommand({ shardCollection: "test.test8", key: { _id: 1}, unique: true }) );
 
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test2" }, { $set : { "noBalance" : true } }) );
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test4" }, { $set : { "noBalance" : true } }) );
+function assertPresentInOutput(output, content, what) {
+    assert(output.includes(content), what + " \"" + content + "\" NOT present in output of printShardingStatus() (but it should be)");
+}
 
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test6" }, { $set : { "noBalance" : "truthy noBalance value 1" } }) );
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test7" }, { $set : { "unique" : "truthy unique value 1" } }) );
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test8" }, { $set : { "noBalance" : "truthy noBalance value 2" } }) );
-assert.writeOK( mongos.getDB("config").collections.update({ _id : "test.test8" }, { $set : { "unique" : "truthy unique value 2" } }) );
+function assertNotPresentInOutput(output, content, what) {
+    assert( ! output.includes(content), what + " \"" + content + "\" IS present in output of printShardingStatus() (but it should not be)");
+}
+
+
+
+////////////////////////
+// Basic tests
+////////////////////////
 
 var res = print.captureAllOutput( function () { return st.printShardingStatus(); } );
 var output = res.output.join("\n");
 jsTestLog(output);
 
+assertPresentInOutput(output, "shards:", "section header");
+assertPresentInOutput(output, "databases:", "section header");
+assertPresentInOutput(output, "balancer:", "section header");
 
-function assertPresentInOutput(content, what) {
-    assert(output.includes(content), what + " \"" + content + "\" not present in output of printShardingStatus()");
+assertPresentInOutput(output, dbName, "database");
+assertPresentInOutput(output, collName, "collection");
+assertPresentInOutput(output, shardKeyName, "shard key");
+
+
+////////////////////////
+// Extended tests
+////////////////////////
+
+var prevCollNames = {};
+function testCollDetails(args) {
+    // Mandatory args
+    for (var i in { collName: 1, unique: 1, noBalance: 1 }) {
+        assert(args.hasOwnProperty(i), i + " is a mandatory arg to testExtendedCollDetails()");
+    }
+
+    assert( ! prevCollNames[args.collName], "test erronenously reused a collection name");
+
+    var cmdObj = { shardCollection: args.collName, key: { _id: 1 } };
+    if (args.unique) {
+        cmdObj.unique = true;
+    }
+    assert.commandWorked( admin.runCommand(cmdObj) );
+
+    if (args.unique != true && args.unique != false && args.unique != undefined) {
+        assert.writeOK( mongos.getDB("config").collections.update({ _id : args.collName }, { $set : { "unique" : args.unique } }) );
+    }
+    if (args.noBalance) {
+        assert.writeOK( mongos.getDB("config").collections.update({ _id : args.collName }, { $set : { "noBalance" : args.noBalance } }) );
+    }
+
+    var res = print.captureAllOutput( function () { return st.printShardingStatus(); } );
+    var output = res.output.join("\n");
+    jsTestLog(output);
+
+    assertPresentInOutput(output, args.collName, "collection");
+    // If any of the previous collection names are present, then their optional indicators
+    // might also be present.  This might taint the results when we go searching through
+    // the output.
+    // This also means that later collNames can't have any of the earlier collNames as a prefix.
+    for (var prevCollName in prevCollNames) {
+        assertNotPresentInOutput(output, prevCollName, "previous collection");
+    }
+
+    if (args.unique) {
+        assertPresentInOutput(output, "unique: true", "unique shard key indicator");
+    }
+    if (args.unique != true && args.unique != false && args.unique != undefined) {
+        assertPresentInOutput(output, tojson(args.unique), "unique shard key indicator (non bool)");
+    }
+
+    if (args.noBalance) {
+        assertPresentInOutput(output, "balancing: false", "noBalance indicator");
+    }
+    if (args.noBalance != true && args.noBalance != false && args.noBalance != undefined) {
+        assertPresentInOutput(output, tojson(args.noBalance), "noBalance indicator (non bool)");
+    }
+
+    // SERVER-XXXX: drop fails if unique or noBalance is anything other than true/false/missing
+    if (args.unique != true && args.unique != false && args.unique != undefined) {
+        assert.writeOK( mongos.getDB("config").collections.update({ _id : args.collName }, { $set : { "unique" : true } }) );
+    }
+    if (args.noBalance !== true && args.noBalance !== false && args.noBalance !== undefined) {
+        assert.writeOK( mongos.getDB("config").collections.update({ _id : args.collName }, { $set : { "noBalance" : true } }) );
+    }
+    assert( mongos.getCollection(args.collName).drop() );
+
+    prevCollNames[args.collName] = true;
 }
 
-assertPresentInOutput("shards:", "section header");
-assertPresentInOutput("databases:", "section header");
-assertPresentInOutput("balancer:", "section header");
+assert.commandWorked( admin.runCommand({ enableSharding: "test" }) );
 
-assertPresentInOutput(dbName, "database");
-assertPresentInOutput(collName, "collection");
-assertPresentInOutput(shardKeyName, "shard key");
+testCollDetails({ collName: "test.test1", unique: false, noBalance: false });
+testCollDetails({ collName: "test.test2", unique: false, noBalance: true  });
+testCollDetails({ collName: "test.test3", unique: true,  noBalance: false });
+testCollDetails({ collName: "test.test4", unique: true,  noBalance: true  });
+
+testCollDetails({ collName: "test.test6", unique: false,                   noBalance: "truthy noBalance value 1" });
+testCollDetails({ collName: "test.test9", unique: false,                   noBalance: 1 });
+testCollDetails({ collName: "test.test7", unique: "truthy unique value 1", noBalance: false                      });
+testCollDetails({ collName: "test.test8", unique: "truthy unique value 2", noBalance: "truthy noBalance value 2" });
+
+// also check non-bool falsy values
 
 st.stop();
 
