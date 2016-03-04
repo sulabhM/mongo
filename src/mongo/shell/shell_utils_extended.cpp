@@ -33,6 +33,7 @@
 
 #include <boost/filesystem/convenience.hpp>
 #include <fstream>
+#include <cstdlib>
 
 #include "mongo/scripting/engine.h"
 #include "mongo/shell/shell_utils.h"
@@ -169,6 +170,19 @@ BSONObj cat(const BSONObj& args, void* data) {
     return BSON("" << ss.str());
 }
 
+BSONObj getenv(const BSONObj& args, void* data) {
+    BSONElement e = singleArg(args);
+    uassert(18512,
+            "getenv requires a string argument -- getenv(envvar)",
+            args.firstElement().type() == String);
+    const char *env = ::getenv(e.valuestrsafe());
+    if (env == nullptr) {
+        return BSONObj();
+    } else {
+        return BSON("" << env);
+    }
+}
+
 BSONObj md5sumFile(const BSONObj& args, void* data) {
     BSONElement e = singleArg(args);
     stringstream ss;
@@ -251,6 +265,7 @@ void installShellUtilsExtended(Scope& scope) {
     scope.injectNative("hostname", hostname);
     scope.injectNative("md5sumFile", md5sumFile);
     scope.injectNative("mkdir", mkdir);
+    scope.injectNative("getenv", getenv);
 }
 }
 }
