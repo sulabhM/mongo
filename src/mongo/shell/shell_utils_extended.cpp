@@ -183,6 +183,18 @@ BSONObj getenv(const BSONObj& args, void* data) {
     }
 }
 
+BSONObj unsetenv(const BSONObj& args, void* data) {
+    BSONElement e = singleArg(args);
+    uassert(18513,
+            "unsetenv requires a string argument -- unsetenv(envvar)",
+            args.firstElement().type() == String);
+    int res = ::unsetenv(e.valuestrsafe());
+    if (res < 0) {
+        uasserted(18514, mongoutils::str::stream() << "unsetenv() failed: " << errnoWithDescription());
+    }
+    return BSONObj();
+}
+
 BSONObj md5sumFile(const BSONObj& args, void* data) {
     BSONElement e = singleArg(args);
     stringstream ss;
@@ -266,6 +278,7 @@ void installShellUtilsExtended(Scope& scope) {
     scope.injectNative("md5sumFile", md5sumFile);
     scope.injectNative("mkdir", mkdir);
     scope.injectNative("getenv", getenv);
+    scope.injectNative("unsetenv", unsetenv);
 }
 }
 }
