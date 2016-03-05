@@ -262,7 +262,7 @@ BSONObj unsetenv(const BSONObj& args, void* data) {
     if (res < 0) {
         uasserted(18514, mongoutils::str::stream() << "unsetenv() failed: " << errnoWithDescription());
     }
-    return BSONObj();
+    return undefinedReturn;
 }
 
 void installShellUtilsExtended(Scope& scope) {
