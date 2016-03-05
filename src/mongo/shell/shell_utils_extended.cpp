@@ -170,31 +170,6 @@ BSONObj cat(const BSONObj& args, void* data) {
     return BSON("" << ss.str());
 }
 
-BSONObj getenv(const BSONObj& args, void* data) {
-    BSONElement e = singleArg(args);
-    uassert(18512,
-            "getenv requires a string argument -- getenv(envvar)",
-            args.firstElement().type() == String);
-    const char *env = ::getenv(e.valuestrsafe());
-    if (env == nullptr) {
-        return BSONObj();
-    } else {
-        return BSON("" << env);
-    }
-}
-
-BSONObj unsetenv(const BSONObj& args, void* data) {
-    BSONElement e = singleArg(args);
-    uassert(18513,
-            "unsetenv requires a string argument -- unsetenv(envvar)",
-            args.firstElement().type() == String);
-    int res = ::unsetenv(e.valuestrsafe());
-    if (res < 0) {
-        uasserted(18514, mongoutils::str::stream() << "unsetenv() failed: " << errnoWithDescription());
-    }
-    return BSONObj();
-}
-
 BSONObj md5sumFile(const BSONObj& args, void* data) {
     BSONElement e = singleArg(args);
     stringstream ss;
@@ -263,6 +238,31 @@ BSONObj getHostName(const BSONObj& a, void* data) {
     verify(gethostname(buf, 260) == 0);
     buf[259] = '\0';
     return BSON("" << buf);
+}
+
+BSONObj getenv(const BSONObj& args, void* data) {
+    BSONElement e = singleArg(args);
+    uassert(18512,
+            "getenv requires a string argument -- getenv(envvar)",
+            args.firstElement().type() == String);
+    const char *env = ::getenv(e.valuestrsafe());
+    if (env == nullptr) {
+        return BSONObj();
+    } else {
+        return BSON("" << env);
+    }
+}
+
+BSONObj unsetenv(const BSONObj& args, void* data) {
+    BSONElement e = singleArg(args);
+    uassert(18513,
+            "unsetenv requires a string argument -- unsetenv(envvar)",
+            args.firstElement().type() == String);
+    int res = ::unsetenv(e.valuestrsafe());
+    if (res < 0) {
+        uasserted(18514, mongoutils::str::stream() << "unsetenv() failed: " << errnoWithDescription());
+    }
+    return BSONObj();
 }
 
 void installShellUtilsExtended(Scope& scope) {
