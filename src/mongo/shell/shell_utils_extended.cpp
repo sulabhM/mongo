@@ -253,6 +253,29 @@ BSONObj getenv(const BSONObj& args, void* data) {
     }
 }
 
+BSONObj setenv(const BSONObj& args, void* data) {
+    uassert(18515, "setenv requires two or three arguments -- setenv(envvar, value[, overwrite])", args.nFields() == 2 || args.nFields() == 3);
+    uassert(18516,
+            "setenv requires a string for envvar -- setenv(envvar, value[, overwrite])",
+            args.firstElement().type() == String);
+    BSONObjIterator it(args);
+    const char* envvar = it.next().valuestrsafe();
+    const char* value = it.next().valuestrsafe(); // FIXME: make this cast to string
+    bool overwrite = true;
+    if (args.nFields() == 3) {
+        auto thirdElement = it.next();
+        uassert(18517,
+                "setenv requires a boolean for overwrite -- setenv(envvar, value[, overwrite])",
+                thirdElement.type() == Bool);
+        overwrite = thirdElement.Bool();
+    }
+    int res = ::setenv(envvar, value, overwrite ? 1 : 0);
+    if (res < 0) {
+        uasserted(18518, mongoutils::str::stream() << "setenv() failed: " << errnoWithDescription());
+    }
+    return undefinedReturn;
+}
+
 BSONObj unsetenv(const BSONObj& args, void* data) {
     BSONElement e = singleArg(args);
     uassert(18513,
@@ -279,6 +302,7 @@ void installShellUtilsExtended(Scope& scope) {
     scope.injectNative("mkdir", mkdir);
     scope.injectNative("getenv", getenv);
     scope.injectNative("unsetenv", unsetenv);
+    scope.injectNative("setenv", setenv);
 }
 }
 }
