@@ -46,6 +46,9 @@
 #include "mongo/util/scopeguard.h"
 #include "mongo/util/text.h"
 
+// for listenv
+extern char **environ;
+
 namespace mongo {
 
 using std::ifstream;
@@ -288,6 +291,31 @@ BSONObj unsetenv(const BSONObj& args, void* data) {
     return undefinedReturn;
 }
 
+BSONObj listenv(const BSONObj& args, void* data) {
+    uassert(18519, "listenv accepts no arguments", args.nFields() == 0);
+    BSONObjBuilder b;
+    char** cur = ::environ;
+    while (cur && *cur) {
+        char* value = *cur;
+        while (*value != '\0' && *value != '=') {
+            value++;
+        }
+        if (*value != '\0') {
+            const std::string varname(*cur, value - *cur);
+            value++;  // Step over the '='.
+            b << varname << value;
+        } else {
+            // If there was no '=', just ignore it.
+            // This should not happen.
+        }
+        cur++;
+    }
+
+    BSONObjBuilder ret;
+    ret.append("", b.obj());
+    return ret.obj();
+}
+
 void installShellUtilsExtended(Scope& scope) {
     scope.injectNative("getHostName", getHostName);
     scope.injectNative("removeFile", removeFile);
@@ -303,6 +331,7 @@ void installShellUtilsExtended(Scope& scope) {
     scope.injectNative("getenv", getenv);
     scope.injectNative("unsetenv", unsetenv);
     scope.injectNative("setenv", setenv);
+    scope.injectNative("listenv", listenv);
 }
 }
 }
