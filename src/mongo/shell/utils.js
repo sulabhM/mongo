@@ -145,6 +145,12 @@ print.captureAllOutput = function (fn, args) {
     return res;
 };
 
+
+clearenv = function() {
+    return Object.keys(listenv()).forEach( function (x) { unsetenv(x); } );
+};
+
+
 if ( typeof TestData == "undefined" ){
     TestData = undefined;
 }
