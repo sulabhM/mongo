@@ -152,10 +152,37 @@ clearenv = function() {
 
 env = new Proxy({}, {
     get: function (target, name) {
-        return getenv(name);
+        if (name === "__proto__") {
+            // Mainly for autocomplete.
+            return this.getPrototypeOf(target);
+        } else if (name === "toString") {
+            // Keeps autocomplete happy.
+            return function () { return "env" };
+        } else {
+            return getenv(name);
+        }
     },
     set: function (target, name, value) {
-        return setenv(name, value, true);
+        if (value === null || typeof value === "undefined") {
+            return this.deleteProperty(target, name);
+        } else {
+            return setenv(name, value, true);
+        }
+    },
+    deleteProperty: function (target, name) {
+        return unsetenv(name);
+    },
+    has: function (target, name) {
+        return !!this.get(target, name);
+    },
+    ownKeys: function (target) {
+        return Object.keys(listenv());
+    },
+    enumerate: function (target) {
+        return this.ownKeys(target)[Symbol.iterator]();
+    },
+    getPrototypeOf: function (target) {
+        return target;
     }
 });
 
