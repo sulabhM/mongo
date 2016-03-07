@@ -263,7 +263,12 @@ BSONObj setenv(const BSONObj& args, void* data) {
             args.firstElement().type() == String);
     BSONObjIterator it(args);
     const char* envvar = it.next().valuestrsafe();
-    const char* value = it.next().valuestrsafe(); // FIXME: make this cast to string
+    auto valuearg = it.next();
+    // FIXME: once can cast value to a string, remove this
+    uassert(18520,
+            "setenv requires a string for value -- setenv(envvar, value[, overwrite])",
+            valuearg.type() == String);
+    const char* value = valuearg.valuestrsafe(); // FIXME: make this cast to string
     bool overwrite = true;
     if (args.nFields() == 3) {
         auto thirdElement = it.next();
