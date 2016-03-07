@@ -150,6 +150,15 @@ clearenv = function() {
     return Object.keys(listenv()).forEach( function (x) { unsetenv(x); } );
 };
 
+env = new Proxy({}, {
+    get: function (target, name) {
+        return getenv(name);
+    },
+    set: function (target, name, value) {
+        return setenv(name, value, true);
+    }
+});
+
 
 if ( typeof TestData == "undefined" ){
     TestData = undefined;
