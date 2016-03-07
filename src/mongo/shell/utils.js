@@ -150,14 +150,14 @@ clearenv = function() {
     return Object.keys(listenv()).forEach( function (x) { unsetenv(x); } );
 };
 
-env = new Proxy({}, {
+Env = new Proxy({}, {
     get: function (target, name) {
         if (name === "__proto__") {
             // Mainly for autocomplete.
             return this.getPrototypeOf(target);
         } else if (name === "toString") {
             // Keeps autocomplete happy.
-            return function () { return "env" };
+            return function () { return "Env" };
         } else {
             return getenv(name);
         }
