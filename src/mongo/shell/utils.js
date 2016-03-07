@@ -150,7 +150,9 @@ clearenv = function() {
     return Object.keys(listenv()).forEach( function (x) { unsetenv(x); } );
 };
 
-Env = new Proxy({}, {
+Env = new Proxy(function () {
+    return listenv();
+}, {
     get: function (target, name) {
         if (name === "__proto__") {
             // Mainly for autocomplete.
