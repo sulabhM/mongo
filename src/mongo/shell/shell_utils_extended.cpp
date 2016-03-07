@@ -289,11 +289,12 @@ BSONObj unsetenv(const BSONObj& args, void* data) {
     uassert(18513,
             "unsetenv requires a string argument -- unsetenv(envvar)",
             args.firstElement().type() == String);
+    bool had = (::getenv(e.valuestrsafe()) != nullptr);
     int res = ::unsetenv(e.valuestrsafe());
     if (res < 0) {
         uasserted(18514, mongoutils::str::stream() << "unsetenv() failed: " << errnoWithDescription());
     }
-    return undefinedReturn;
+    return BSON("" << had);
 }
 
 BSONObj listenv(const BSONObj& args, void* data) {
