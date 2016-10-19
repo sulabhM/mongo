@@ -639,6 +639,11 @@ public:
     virtual bool buildsIndexes() = 0;
 
     /**
+     * Returns if the given namespace is replicated or not.
+     */
+    virtual bool isNamespaceReplicated(std::string ns) = 0;
+
+    /**
      * Returns a vector of members that have applied the operation with OpTime 'op'.
      * "durablyWritten" indicates whether the operation has to be durably applied.
      */

@@ -26,6 +26,8 @@
  *    it in the license file.
  */
 
+#define MONGO_LOG_DEFAULT_COMPONENT ::mongo::logger::LogComponent::kDefault
+
 #include "mongo/platform/basic.h"
 
 #include "mongo/db/repl/member_config.h"
@@ -35,6 +37,7 @@
 #include "mongo/bson/util/bson_check.h"
 #include "mongo/bson/util/bson_extract.h"
 #include "mongo/db/jsobj.h"
+#include "mongo/util/log.h"
 #include "mongo/util/mongoutils/str.h"
 
 namespace mongo {
@@ -311,8 +314,36 @@ bool MemberConfig::hasTags(const ReplicaSetTagConfig& tagConfig) const {
 }
 
 bool MemberConfig::isNamespaceReplicated(std::string ns) const {
-    // FIXME
-    return true;
+    // ns can be either a db name, or a full namespace/collection name.
+    // eg. "dbname", or "dbname.collectionname"
+    log() << "isNamespaceReplicated: " << ns;
+
+    if (_filter.empty()) {
+        // No rules, replicate everything.
+        return true;
+    }
+
+    if (_filter.find(ns) != _filter.end()) {
+        log() << "found ns in filter";
+        return true;
+    }
+
+    auto dot = ns.find('.');
+    if (dot != std::string::npos) {
+        // ns is a full namespace name
+        // the full name has already been tested above, and not found.
+        // so search for the dbname
+
+        auto dbname = ns.substr(0, dot);
+        log() << "dbname = " << dbname;
+        if (_filter.find(dbname) != _filter.end()) {
+            log() << "found dbname in filter";
+            return true;
+        }
+    }
+
+    log() << "didn't find ns or dbname in filter";
+    return false;
 }
 
 BSONObj MemberConfig::toBSON(const ReplicaSetTagConfig& tagConfig) const {

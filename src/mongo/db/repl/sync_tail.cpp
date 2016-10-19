@@ -309,6 +309,10 @@ Status SyncTail::syncApply(OperationContext* txn,
         return Status::OK();
     }
 
+    if ( ! ReplicationCoordinator::get(txn)->isNamespaceReplicated(std::string(ns))) {
+        return Status::OK();
+    }
+
     if (isCommand) {
         MONGO_WRITE_CONFLICT_RETRY_LOOP_BEGIN {
             // a command may need a global write lock. so we will conservatively go

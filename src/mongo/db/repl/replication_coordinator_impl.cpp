@@ -2939,6 +2939,15 @@ bool ReplicationCoordinatorImpl::buildsIndexes() {
     return self.shouldBuildIndexes();
 }
 
+bool ReplicationCoordinatorImpl::isNamespaceReplicated(std::string ns) {
+    stdx::lock_guard<stdx::mutex> lk(_mutex);
+    if (_selfIndex == -1) {
+        return true;
+    }
+    const MemberConfig& self = _rsConfig.getMemberAt(_selfIndex);
+    return self.isNamespaceReplicated(ns);
+}
+
 std::vector<HostAndPort> ReplicationCoordinatorImpl::getHostsWrittenTo(const OpTime& op,
                                                                        bool durablyWritten) {
     std::vector<HostAndPort> hosts;

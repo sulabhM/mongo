@@ -250,6 +250,8 @@ public:
 
     virtual bool buildsIndexes() override;
 
+    virtual bool isNamespaceReplicated(std::string ns) override;
+
     virtual std::vector<HostAndPort> getHostsWrittenTo(const OpTime& op,
                                                        bool durablyWritten) override;
 
