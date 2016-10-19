@@ -343,6 +343,11 @@ bool ReplicationCoordinatorMock::buildsIndexes() {
     return true;
 }
 
+bool ReplicationCoordinatorMock::isNamespaceReplicated(std::string ns) {
+    // TODO
+    return true;
+}
+
 std::vector<HostAndPort> ReplicationCoordinatorMock::getHostsWrittenTo(const OpTime& op,
                                                                        bool durablyWritten) {
     return std::vector<HostAndPort>();

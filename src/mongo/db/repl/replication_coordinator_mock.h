@@ -197,6 +197,8 @@ public:
 
     virtual bool buildsIndexes();
 
+    virtual bool isNamespaceReplicated(std::string ns) override;
+
     virtual std::vector<HostAndPort> getHostsWrittenTo(const OpTime& op, bool durablyWritten);
 
     virtual std::vector<HostAndPort> getOtherNodesInReplSet() const;
