@@ -309,11 +309,35 @@ Status SyncTail::syncApply(OperationContext* txn,
         return Status::OK();
     }
 
-    if ( ! ReplicationCoordinator::get(txn)->isNamespaceReplicated(std::string(ns))) {
-        return Status::OK();
-    }
-
     if (isCommand) {
+        // construct "real" ns
+
+        // strip trailing ".$cmd" if present
+        auto cmdns = std::string(ns);
+        log() << "cmdns = " << cmdns;
+
+        auto dot = cmdns.find('.');
+        if (dot != std::string::npos) {
+            cmdns = cmdns.substr(0, dot);
+            log() << "cmdns after stripping = " << cmdns;
+        }
+        // at this point cmdns has just a dbname in it.
+
+        // if collection name present in command object, append with .
+        BSONObj o = op.getObjectField("o");
+        if (o.firstElementType() == BSONType::String) {
+            auto collName = o.firstElement().valuestr();
+            log() << "collName = " << collName;
+            cmdns += ".";
+            cmdns += collName;
+            log() << "cmdns after adding collName = " << cmdns;
+        }
+        // at this point, cmdns is the more appropriate of either just the dbname, or the full namespace
+
+        if ( ! ReplicationCoordinator::get(txn)->isNamespaceReplicated(cmdns)) {
+            return Status::OK();
+        }
+
         MONGO_WRITE_CONFLICT_RETRY_LOOP_BEGIN {
             // a command may need a global write lock. so we will conservatively go
             // ahead and grab one here. suboptimal. :-(
@@ -325,6 +349,10 @@ Status SyncTail::syncApply(OperationContext* txn,
             return status;
         }
         MONGO_WRITE_CONFLICT_RETRY_LOOP_END(txn, "syncApply_command", ns);
+    }
+
+    if ( ! ReplicationCoordinator::get(txn)->isNamespaceReplicated(std::string(ns))) {
+        return Status::OK();
     }
 
     auto applyOp = [&](Database* db) {

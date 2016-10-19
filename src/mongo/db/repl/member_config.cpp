@@ -335,10 +335,28 @@ bool MemberConfig::isNamespaceReplicated(std::string ns) const {
         // so search for the dbname
 
         auto dbname = ns.substr(0, dot);
-        log() << "dbname = " << dbname;
+        log() << "ns dbname = " << dbname;
         if (_filter.find(dbname) != _filter.end()) {
             log() << "found dbname in filter";
             return true;
+        }
+    } else {
+        // ns is just a dbname, but there is no exact filter rule for that dbname.
+        // this should be replicated if we have any filter rules which are for a collection in this db.
+
+        // need to loop through the filter rules, and for each one, if it has a dot, then get the dbname, and if it matches, then return true.
+        log() << "checking all filter rules for dbname = " << ns;
+        for (FilterIterator filterIter = _filter.begin(); filterIter != _filter.end();
+             filterIter++) {
+            auto filterDot = filterIter->find('.');
+            if (filterDot != std::string::npos) {
+                auto filterDbname = filterIter->substr(0, filterDot);
+                log() << "filter rule " << *filterIter << " has dbname " << filterDbname;
+                if (ns == filterDbname) {
+                    log() << "found dbname in filter";
+                    return true;
+                }
+            }
         }
     }
 
