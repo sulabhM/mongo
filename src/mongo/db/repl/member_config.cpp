@@ -49,6 +49,7 @@ const std::string MemberConfig::kSlaveDelayFieldName = "slaveDelay";
 const std::string MemberConfig::kArbiterOnlyFieldName = "arbiterOnly";
 const std::string MemberConfig::kBuildIndexesFieldName = "buildIndexes";
 const std::string MemberConfig::kTagsFieldName = "tags";
+const std::string MemberConfig::kFilterFieldName = "filter";
 const std::string MemberConfig::kInternalVoterTagName = "$voter";
 const std::string MemberConfig::kInternalElectableTagName = "$electable";
 const std::string MemberConfig::kInternalAllTagName = "$all";
@@ -62,7 +63,8 @@ const std::string kLegalMemberConfigFieldNames[] = {MemberConfig::kIdFieldName,
                                                     MemberConfig::kSlaveDelayFieldName,
                                                     MemberConfig::kArbiterOnlyFieldName,
                                                     MemberConfig::kBuildIndexesFieldName,
-                                                    MemberConfig::kTagsFieldName};
+                                                    MemberConfig::kTagsFieldName,
+                                                    MemberConfig::kFilterFieldName};
 
 const int kVotesFieldDefault = 1;
 const double kPriorityFieldDefault = 1.0;
@@ -70,6 +72,7 @@ const Seconds kSlaveDelayFieldDefault(0);
 const bool kArbiterOnlyFieldDefault = false;
 const bool kHiddenFieldDefault = false;
 const bool kBuildIndexesFieldDefault = true;
+const bool kFilterFieldDefault = 0;
 
 const Seconds kMaxSlaveDelay(3600 * 24 * 366);
 
@@ -199,12 +202,32 @@ Status MemberConfig::initialize(const BSONObj& mcfg, ReplicaSetTagConfig* tagCon
     }
 
     //
+    // Parse filter field.
+    //
+    _filter.clear();
+    BSONElement filterElement;
+    status = bsonExtractTypedField(mcfg, kFilterFieldName, Array, &filterElement);
+    if (status.isOK()) {
+        for (BSONObj::iterator filterIter(filterElement.Obj()); filterIter.more();) {
+            const BSONElement& filter = filterIter.next();
+            if (filter.type() != String) {
+                return Status(ErrorCodes::TypeMismatch,
+                              str::stream() << "filter field has non-string value of type "
+                                            << typeName(filter.type()));
+            }
+            _filter.insert(filter.valuestr());
+        }
+    } else if (ErrorCodes::NoSuchKey != status) {
+        return status;
+    }
+
+    //
     // Add internal tags based on other member properties.
     //
 
     // Add a voter tag if this non-arbiter member votes; use _id for uniquity.
     const std::string id = str::stream() << _id;
-    if (isVoter() && !_arbiterOnly) {
+    if (isVoter() && !_arbiterOnly && !isFiltered()) {
         _tags.push_back(tagConfig->makeTag(kInternalVoterTagName, id));
     }
 
@@ -266,6 +289,10 @@ Status MemberConfig::validate() const {
         if (!_buildIndexes) {
             return Status(ErrorCodes::BadValue, "priority must be 0 when buildIndexes=false");
         }
+        // FIXME: there might be other validation that can go here.
+        if (isFiltered()) {
+            return Status(ErrorCodes::BadValue, "priority must be 0 when filters are used");
+        }
     }
     return Status::OK();
 }
@@ -281,6 +308,11 @@ bool MemberConfig::hasTags(const ReplicaSetTagConfig& tagConfig) const {
         return true;
     }
     return false;
+}
+
+bool MemberConfig::isNamespaceReplicated(std::string ns) const {
+    // FIXME
+    return true;
 }
 
 BSONObj MemberConfig::toBSON(const ReplicaSetTagConfig& tagConfig) const {
@@ -306,6 +338,14 @@ BSONObj MemberConfig::toBSON(const ReplicaSetTagConfig& tagConfig) const {
 
     configBuilder.append("slaveDelay", durationCount<Seconds>(_slaveDelay));
     configBuilder.append("votes", getNumVotes());
+
+    BSONArrayBuilder filter(configBuilder.subarrayStart("filter"));
+    for (FilterIterator filterIter = _filter.begin(); filterIter != _filter.end();
+         filterIter++) {
+        filter.append(*filterIter);
+    }
+    filter.done();
+
     return configBuilder.obj();
 }
 

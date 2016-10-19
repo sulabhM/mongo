@@ -30,6 +30,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 
 #include "mongo/base/status.h"
 #include "mongo/db/repl/replica_set_tag.h"
@@ -48,6 +49,7 @@ namespace repl {
 class MemberConfig {
 public:
     typedef std::vector<ReplicaSetTag>::const_iterator TagIterator;
+    typedef std::set<std::string>::const_iterator FilterIterator;
 
     static const std::string kIdFieldName;
     static const std::string kVotesFieldName;
@@ -58,6 +60,7 @@ public:
     static const std::string kArbiterOnlyFieldName;
     static const std::string kBuildIndexesFieldName;
     static const std::string kTagsFieldName;
+    static const std::string kFilterFieldName;
     static const std::string kInternalVoterTagName;
     static const std::string kInternalElectableTagName;
     static const std::string kInternalAllTagName;
@@ -178,6 +181,39 @@ public:
     }
 
     /**
+     * Gets the number of filter rules for this member.
+     */
+    size_t getNumFilters() const {
+        return _filter.size();
+    }
+
+    /**
+     * Returns true if this MemberConfig has any filter rules.
+     */
+    bool isFiltered() const {
+        return getNumFilters() > 0;
+    }
+
+    /**
+     * Gets a begin iterator over the filter for this member.
+     */
+    FilterIterator filterBegin() const {
+        return _filter.begin();
+    }
+
+    /**
+     * Gets an end iterator over the filter for this member.
+     */
+    FilterIterator filterEnd() const {
+        return _filter.end();
+    }
+
+    /**
+     * How is a given namespace covered by the filtering rules?
+     */
+    bool isNamespaceReplicated(std::string ns) const;
+
+    /**
      * Returns true if this represents the configuration of an electable member.
      */
     bool isElectable() const {
@@ -199,6 +235,7 @@ private:
     bool _hidden;                      // if set, don't advertise to drivers in isMaster.
     bool _buildIndexes;                // if false, do not create any non-_id indexes
     std::vector<ReplicaSetTag> _tags;  // tagging for data center, rack, etc.
+    std::set<std::string> _filter;     // namespace filtering rules
 };
 
 }  // namespace repl
