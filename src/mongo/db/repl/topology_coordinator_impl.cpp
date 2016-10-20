@@ -150,7 +150,8 @@ HostAndPort TopologyCoordinatorImpl::getSyncSourceAddress() const {
 
 HostAndPort TopologyCoordinatorImpl::chooseNewSyncSource(Date_t now,
                                                          const Timestamp& lastTimestampApplied,
-                                                         ChainingPreference chainingPreference) {
+                                                         ChainingPreference chainingPreference,
+							 bool ignoreFilteredNodes) {
     // If we are not a member of the current replica set configuration, no sync source is valid.
     if (_selfIndex == -1) {
         LOG(1) << "Cannot sync from any members because we are not in the replica set config";
@@ -248,6 +249,13 @@ HostAndPort TopologyCoordinatorImpl::chooseNewSyncSource(Date_t now,
             }
 
             const MemberConfig& itMemberConfig(_rsConfig.getMemberAt(itIndex));
+
+	    // Skip nodes doing filtered replication
+	    if (ignoreFilteredNodes && itMemberConfig.isFiltered()) {
+		   log() << "Skipping filtered repl node as syncSource: "
+			 << itMemberConfig.getHostAndPort();
+		   continue;
+	    }
 
             // Candidate must be up to be considered.
             if (!it->up()) {

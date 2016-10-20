@@ -3066,15 +3066,25 @@ bool ReplicationCoordinatorImpl::isReplEnabled() const {
     return getReplicationMode() != modeNone;
 }
 
-HostAndPort ReplicationCoordinatorImpl::chooseNewSyncSource(const Timestamp& lastTimestampFetched) {
+HostAndPort ReplicationCoordinatorImpl::chooseNewSyncSource(const Timestamp& lastTimestampFetched,
+							    bool ignoreFilteredNodes) {
     LockGuard topoLock(_topoMutex);
 
     HostAndPort oldSyncSource = _topCoord->getSyncSourceAddress();
     auto chainingPreference = isCatchingUp()
         ? TopologyCoordinator::ChainingPreference::kAllowChaining
         : TopologyCoordinator::ChainingPreference::kUseConfiguration;
+
+    if (!ignoreFilteredNodes &&
+	(MemberState::RS_STARTUP2 == getMemberState().s ||
+         MemberState::RS_ROLLBACK == getMemberState().s)) {
+	    log() << "MemberState: " << getMemberState().toString() << ": "
+	          << "Will ignore filtered nodes in source selection.";
+	    ignoreFilteredNodes = true;
+    }
     HostAndPort newSyncSource = _topCoord->chooseNewSyncSource(
-        _replExecutor.now(), lastTimestampFetched, chainingPreference);
+        _replExecutor.now(), lastTimestampFetched, chainingPreference,
+	ignoreFilteredNodes);
 
     stdx::lock_guard<stdx::mutex> lock(_mutex);
     // If we lost our sync source, schedule new heartbeats immediately to update our knowledge

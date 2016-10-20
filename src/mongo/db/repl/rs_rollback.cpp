@@ -837,6 +837,9 @@ Status _syncRollback(OperationContext* txn,
         }
     }
 
+    // FIXME: Now that we have set member state to ROLLBACK,
+    // we should discard current syncSource and find a new one
+
     FixUpInfo how;
     log() << "rollback 1";
     how.rbid = rollbackSource.getRollbackId();

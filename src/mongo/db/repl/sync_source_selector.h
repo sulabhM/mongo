@@ -64,7 +64,8 @@ public:
     /**
      * Chooses a viable sync source, or, if none available, returns empty HostAndPort.
      */
-    virtual HostAndPort chooseNewSyncSource(const Timestamp& lastTimestampFetched) = 0;
+    virtual HostAndPort chooseNewSyncSource(const Timestamp& lastTimestampFetched,
+		    			    bool ignoreFilteredNodes = false) = 0;
 
     /**
      * Blacklists choosing 'host' as a sync source until time 'until'.
