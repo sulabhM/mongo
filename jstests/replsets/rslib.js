@@ -2,6 +2,7 @@ var wait;
 var occasionally;
 var reconnect;
 var getLatestOp;
+var checkOpInOplog;
 var waitForAllMembers;
 var reconfig;
 var awaitOpTime;
@@ -80,6 +81,17 @@ var awaitRSClientHosts;
             return cursor.next();
         }
         return null;
+    };
+
+    checkOpInOplog = function(node, op, count) {
+        node.getDB("admin").getMongo().setSlaveOk();
+        var oplog = node.getDB("local")['oplog.rs'];
+        try {
+            assert.eq(oplog.count(op), count, "op: " + tojson(op));
+        } catch(e) {
+            e += ", oplog: " + tojson(oplog.find().toArray());
+            throw(e);
+        }
     };
 
     waitForAllMembers = function(master, timeout) {
