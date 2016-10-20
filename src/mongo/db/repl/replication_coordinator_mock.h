@@ -207,7 +207,8 @@ public:
 
     virtual Status checkReplEnabledForCommand(BSONObjBuilder* result);
 
-    virtual HostAndPort chooseNewSyncSource(const Timestamp& lastTimestampFetched);
+    virtual HostAndPort chooseNewSyncSource(const Timestamp& lastTimestampFetched,
+		    			    bool ignoreFilteredNodes = false);
 
     virtual void blacklistSyncSource(const HostAndPort& host, Date_t until);
 
