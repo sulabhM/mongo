@@ -55,7 +55,7 @@ load("jstests/replsets/rslib.js");
         rt.awaitReplication();
         var cfg = rt.getReplSetConfigFromNode();
         cfg.version++;
-        cfg.members.push({_id: 2, host: rt.lastNode.host, priority: 0, filter: [ "included", "partial.included" ] });
+        cfg.members.push({_id: 2, host: rt.lastNode.host, priority: 0, filter: [ "admin", "included", "partial.included" ] });
         rt.nodeOptions.n2 = rt.lastNodeOptions;
         rt.ports.push(rt.lastPort);
         rt.nodes.push(rt.lastNode);
