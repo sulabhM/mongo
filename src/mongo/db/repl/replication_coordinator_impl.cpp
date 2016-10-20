@@ -1026,8 +1026,7 @@ void ReplicationCoordinatorImpl::_updateSlaveInfoDurableOpTime_inlock(SlaveInfo*
     // But without it, other nodes might erroneously take the "durability" of this node
     // into account when they are figuring out the consensus optime (lastCommittedOpTime).
     const MemberConfig* memberConfig = _rsConfig.findMemberByID(slaveInfo->memberId);
-    invariant(memberConfig);
-    if (memberConfig->isFiltered()) {
+    if (memberConfig && memberConfig->isFiltered()) {
         return;
     }
 
