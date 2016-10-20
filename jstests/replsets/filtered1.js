@@ -22,6 +22,7 @@ load("jstests/replsets/rslib.js");
         rt.waitForState(rt.nodes[0], ReplSetTest.State.PRIMARY);
         rt.awaitNodesAgreeOnPrimary();
         rt.awaitReplication();
+        rt.numCopiesWritten = 0;
         return rt;
     }
 
@@ -45,6 +46,7 @@ load("jstests/replsets/rslib.js");
         rt.waitForState(rt.nodes[0], ReplSetTest.State.PRIMARY);
         rt.awaitNodesAgreeOnPrimary();
         rt.awaitReplication();
+        rt.numCopiesWritten = 0;
         //jsTestLog(tojson(rt));
         return rt;
     }
@@ -67,26 +69,37 @@ load("jstests/replsets/rslib.js");
     var bothNamespaces = [].concat(excludedNamespaces).concat(includedNamespaces);
 
     // Write some data.
-    function writeData(rt, writeConcern) {
+    function writeData(rt, writeConcern, expectedResult) {
         var primary = rt.getPrimary();
         var options = {writeConcern};
-        bothNamespaces.forEach( (ns) => assert.writeOK(primary.getCollection(ns).insert({x: ns}, options)) );
+        bothNamespaces.forEach( (ns) => expectedResult(primary.getCollection(ns).insert({x: ns}, options)) );
+        rt.numCopiesWritten++;
     }
 
     // Check that the data is where it should be.
-    function checkData(rt, numCopies) {
+    function checkUnfilteredData(rt) {
         rt.awaitReplication();
 
         // The regular node should have everything.
-        bothNamespaces.forEach( (ns) => assert.eq(numCopies, rt.nodes[1].getCollection(ns).find({x:ns}).count()) );
+        bothNamespaces.forEach( (ns) => assert.eq(rt.numCopiesWritten, rt.nodes[1].getCollection(ns).find({x:ns}).count()) );
         bothNamespaces.forEach( (ns) => rt.nodes[1].getCollection(ns).find({x:ns}).forEach( (doc) => assert.eq(ns, doc.x) ) );
+    }
+
+    function checkFilteredData(rt) {
+        rt.awaitReplication();
 
         // The filtered node should only have the included things, and none of the excluded things.
         excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find({x:ns}).count()) );
         excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find().count()) );
         excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).count()) );
-        includedNamespaces.forEach( (ns) => assert.eq(numCopies, rt.nodes[2].getCollection(ns).find({x:ns}).count()) );
+        includedNamespaces.forEach( (ns) => assert.eq(rt.numCopiesWritten, rt.nodes[2].getCollection(ns).find({x:ns}).count()) );
         includedNamespaces.forEach( (ns) => rt.nodes[2].getCollection(ns).find({x:ns}).forEach( (doc) => assert.eq(ns, doc.x) ) );
+    }
+
+    function checkData(rt) {
+        rt.awaitReplication();
+        checkUnfilteredData(rt);
+        checkFilteredData(rt);
     }
 
     // Check that the oplogs are how they should be.
@@ -100,8 +113,8 @@ load("jstests/replsets/rslib.js");
     (function() {
         jsTestLog("START: Test a set which begins life with a filtered node.");
         var rt = initReplsetWithFilteredNode();
-        writeData(rt, { w: 1, wtimeout: 60 * 1000 });
-        checkData(rt, 1);
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
+        checkData(rt);
         checkOplogs(rt, 1);
         checkOplogs(rt, 2);
         rt.stopSet();
@@ -111,8 +124,8 @@ load("jstests/replsets/rslib.js");
         jsTestLog("START: Test a set which begins life without a filtered node, but then gets added immediately.");
         var rt = initReplsetWithoutFilteredNode();
         addFilteredNode(rt);
-        writeData(rt, { w: 1, wtimeout: 60 * 1000 });
-        checkData(rt, 1);
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
+        checkData(rt);
         checkOplogs(rt, 1);
         checkOplogs(rt, 2);
         rt.stopSet();
@@ -121,10 +134,32 @@ load("jstests/replsets/rslib.js");
     (function() {
         jsTestLog("START: Test a set which begins life without a filtered node, but then gets added later, ie. initial sync.");
         var rt = initReplsetWithoutFilteredNode();
-        writeData(rt, { w: 1, wtimeout: 60 * 1000 });
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
         addFilteredNode(rt);
-        checkData(rt, 1);
+        checkData(rt);
         checkOplogs(rt, 1);
+        rt.stopSet();
+    })();
+
+    (function() {
+        jsTestLog("START: Test write concern.");
+        var rt = initReplsetWithFilteredNode();
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
+        checkData(rt);
+        checkOplogs(rt, 1);
+        checkOplogs(rt, 2);
+
+        rt.stop(1);
+
+        [ 2, "majority" ].forEach( (w) => {
+            [ false, true ].forEach( (j) => {
+                jsTestLog("Write concern: " + tojson({w, j}));
+                writeData(rt, { w, j, wtimeout: 5 * 1000 }, (x) => assert.eq(true, assert.writeErrorWithCode(x, ErrorCodes.WriteConcernFailed).getWriteConcernError().errInfo.wtimeout));
+                checkFilteredData(rt);
+                checkOplogs(rt, 2);
+            });
+        });
+
         rt.stopSet();
     })();
 
