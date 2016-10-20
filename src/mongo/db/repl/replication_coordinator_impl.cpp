@@ -3051,8 +3051,17 @@ HostAndPort ReplicationCoordinatorImpl::chooseNewSyncSource(const Timestamp& las
     auto chainingPreference = isCatchingUp()
         ? TopologyCoordinator::ChainingPreference::kAllowChaining
         : TopologyCoordinator::ChainingPreference::kUseConfiguration;
+
+    bool ignoreFilteredNodes;
+    if (MemberState::RS_STARTUP2 == getMemberState().s ||
+        MemberState::RS_ROLLBACK == getMemberState().s) {
+	    log() << "MemberState: " << getMemberState().toString() << ": "
+	    log() << "Will ignore filtered nodes in source selection."
+	    ignoreFilteredNodes = true;
+    }
     HostAndPort newSyncSource = _topCoord->chooseNewSyncSource(
-        _replExecutor.now(), lastTimestampFetched, chainingPreference);
+        _replExecutor.now(), lastTimestampFetched, chainingPreference,
+	ignoreFilteredNodes);
 
     stdx::lock_guard<stdx::mutex> lock(_mutex);
     // If we lost our sync source, schedule new heartbeats immediately to update our knowledge
