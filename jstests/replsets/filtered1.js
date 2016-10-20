@@ -64,6 +64,25 @@ load("jstests/replsets/rslib.js");
         rt.awaitReplication();
     }
 
+    // Force node "node" to sync from node "from".
+    function syncNodeFrom(rt, node, from) {
+        assert.commandWorked(rt.nodes[node].getDB("admin").runCommand({"replSetSyncFrom": rt.nodes[from].host}));
+        var res;
+        assert.soon(
+            function() {
+                res = rt.nodes[node].getDB("admin").runCommand({"replSetGetStatus": 1});
+                return res.syncingTo === rt.nodes[from].host;
+            },
+            function() {
+                return "node " + node + " failed to start syncing from node " + from + ": " + tojson(res);
+            });
+    }
+
+    // Force node 1 (regular node) to sync from node 2 (filtered node).
+    function normalNodeSyncFromFilteredNode(rt) {
+        syncNodeFrom(rt, 1, 2);
+    }
+
     var excludedNamespaces = [ "excluded.excluded", "partial.excluded" ];
     var includedNamespaces = [ "included.included", "partial.included" ];
     var bothNamespaces = [].concat(excludedNamespaces).concat(includedNamespaces);
@@ -76,19 +95,16 @@ load("jstests/replsets/rslib.js");
         rt.numCopiesWritten++;
     }
 
-    // Check that the data is where it should be.
+    // The regular node should have everything.
     function checkUnfilteredData(rt) {
         rt.awaitReplication();
-
-        // The regular node should have everything.
         bothNamespaces.forEach( (ns) => assert.eq(rt.numCopiesWritten, rt.nodes[1].getCollection(ns).find({x:ns}).count()) );
         bothNamespaces.forEach( (ns) => rt.nodes[1].getCollection(ns).find({x:ns}).forEach( (doc) => assert.eq(ns, doc.x) ) );
     }
 
+    // The filtered node should only have the included things, and none of the excluded things.
     function checkFilteredData(rt) {
         rt.awaitReplication();
-
-        // The filtered node should only have the included things, and none of the excluded things.
         excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find({x:ns}).count()) );
         excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find().count()) );
         excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).count()) );
@@ -96,8 +112,8 @@ load("jstests/replsets/rslib.js");
         includedNamespaces.forEach( (ns) => rt.nodes[2].getCollection(ns).find({x:ns}).forEach( (doc) => assert.eq(ns, doc.x) ) );
     }
 
+    // Check that all the data is where it should be.
     function checkData(rt) {
-        rt.awaitReplication();
         checkUnfilteredData(rt);
         checkFilteredData(rt);
     }
@@ -110,6 +126,37 @@ load("jstests/replsets/rslib.js");
         });
     }
 
+    function testReplSetWriteConcern(f) {
+        [ 2, "majority" ].forEach( (w) => {
+            [ false, true ].forEach( (j) => {
+                jsTestLog("Write concern: " + tojson({w, j}));
+                f(w, j);
+            });
+        });
+    }
+
+    function testReplSetWriteConcernForFailure(rt) {
+        testReplSetWriteConcern( (w, j) => {
+            writeData(rt, { w, j, wtimeout: 5 * 1000 }, (x) => assert.eq(true, assert.writeErrorWithCode(x, ErrorCodes.WriteConcernFailed).getWriteConcernError().errInfo.wtimeout));
+            checkFilteredData(rt);
+            checkOplogs(rt, 2);
+        });
+    }
+
+    function testReplSetWriteConcernForSuccess(rt, checkFilteredOplogs) {
+        if (typeof(checkFilteredOplogs) == "undefined") {
+            checkFilteredOplogs = true;
+        }
+        testReplSetWriteConcern( (w, j) => {
+            writeData(rt, { w, j, wtimeout: 60 * 1000 }, assert.writeOK);
+            checkData(rt);
+            checkOplogs(rt, 1);
+            if (checkFilteredOplogs) {
+                checkOplogs(rt, 2);
+            }
+        });
+    }
+
     (function() {
         jsTestLog("START: Test a set which begins life with a filtered node.");
         var rt = initReplsetWithFilteredNode();
@@ -117,6 +164,7 @@ load("jstests/replsets/rslib.js");
         checkData(rt);
         checkOplogs(rt, 1);
         checkOplogs(rt, 2);
+        testReplSetWriteConcernForSuccess(rt);
         rt.stopSet();
     })();
 
@@ -128,6 +176,7 @@ load("jstests/replsets/rslib.js");
         checkData(rt);
         checkOplogs(rt, 1);
         checkOplogs(rt, 2);
+        testReplSetWriteConcernForSuccess(rt);
         rt.stopSet();
     })();
 
@@ -138,11 +187,12 @@ load("jstests/replsets/rslib.js");
         addFilteredNode(rt);
         checkData(rt);
         checkOplogs(rt, 1);
+        testReplSetWriteConcernForSuccess(rt, false);
         rt.stopSet();
     })();
 
     (function() {
-        jsTestLog("START: Test write concern.");
+        jsTestLog("START: Test that filtered nodes don't contribute to write concern.");
         var rt = initReplsetWithFilteredNode();
         writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
         checkData(rt);
@@ -150,15 +200,29 @@ load("jstests/replsets/rslib.js");
         checkOplogs(rt, 2);
 
         rt.stop(1);
+        testReplSetWriteConcernForFailure(rt);
 
-        [ 2, "majority" ].forEach( (w) => {
-            [ false, true ].forEach( (j) => {
-                jsTestLog("Write concern: " + tojson({w, j}));
-                writeData(rt, { w, j, wtimeout: 5 * 1000 }, (x) => assert.eq(true, assert.writeErrorWithCode(x, ErrorCodes.WriteConcernFailed).getWriteConcernError().errInfo.wtimeout));
-                checkFilteredData(rt);
-                checkOplogs(rt, 2);
-            });
-        });
+        rt.stopSet();
+    })();
+
+    (function() {
+        jsTestLog("START: Test syncing oplog via filtered node.");
+        var rt = initReplsetWithFilteredNode();
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
+        checkData(rt);
+        checkOplogs(rt, 1);
+        checkOplogs(rt, 2);
+
+        normalNodeSyncFromFilteredNode(rt);
+
+        // Do a write and make sure it propagates correctly.
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
+        checkData(rt);
+        checkOplogs(rt, 1);
+        checkOplogs(rt, 2);
+
+        // Likewise for write concern writes (confirm replSetUpdatePosition propagation).
+        testReplSetWriteConcernForSuccess(rt);
 
         rt.stopSet();
     })();
