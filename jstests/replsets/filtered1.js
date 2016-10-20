@@ -5,10 +5,7 @@ load("jstests/replsets/rslib.js");
 (function() {
     "use strict";
 
-    function initReplsetWithFilteredNode() {
-        var host = getHostName();
-        var name = "filtered1";
-
+    function initReplsetWithFilteredNode(name) {
         var rt = new ReplSetTest({name: name, nodes: 3});
         rt.startSet();
         rt.initiate({
@@ -26,10 +23,7 @@ load("jstests/replsets/rslib.js");
         return rt;
     }
 
-    function initReplsetWithoutFilteredNode() {
-        var host = getHostName();
-        var name = "filtered1";
-
+    function initReplsetWithoutFilteredNode(name) {
         var rt = new ReplSetTest({name: name, nodes: 3});
         rt.startSet();
         rt.lastNodeOptions = rt.nodeOptions.n2;
@@ -159,7 +153,7 @@ load("jstests/replsets/rslib.js");
 
     (function() {
         jsTestLog("START: Test a set which begins life with a filtered node.");
-        var rt = initReplsetWithFilteredNode();
+        var rt = initReplsetWithFilteredNode("filtered1");
         writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
         checkData(rt);
         checkOplogs(rt, 1);
@@ -170,7 +164,7 @@ load("jstests/replsets/rslib.js");
 
     (function() {
         jsTestLog("START: Test a set which begins life without a filtered node, but then gets added immediately.");
-        var rt = initReplsetWithoutFilteredNode();
+        var rt = initReplsetWithoutFilteredNode("filtered2");
         addFilteredNode(rt);
         writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
         checkData(rt);
@@ -182,7 +176,7 @@ load("jstests/replsets/rslib.js");
 
     (function() {
         jsTestLog("START: Test a set which begins life without a filtered node, but then gets added later, ie. initial sync.");
-        var rt = initReplsetWithoutFilteredNode();
+        var rt = initReplsetWithoutFilteredNode("filtered3");
         writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
         addFilteredNode(rt);
         checkData(rt);
@@ -193,7 +187,7 @@ load("jstests/replsets/rslib.js");
 
     (function() {
         jsTestLog("START: Test that filtered nodes don't contribute to write concern.");
-        var rt = initReplsetWithFilteredNode();
+        var rt = initReplsetWithFilteredNode("filtered4");
         writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
         checkData(rt);
         checkOplogs(rt, 1);
@@ -207,7 +201,7 @@ load("jstests/replsets/rslib.js");
 
     (function() {
         jsTestLog("START: Test syncing oplog via filtered node.");
-        var rt = initReplsetWithFilteredNode();
+        var rt = initReplsetWithFilteredNode("filtered5");
         writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
         checkData(rt);
         checkOplogs(rt, 1);
