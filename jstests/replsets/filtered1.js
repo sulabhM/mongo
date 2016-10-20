@@ -62,39 +62,37 @@ load("jstests/replsets/rslib.js");
         rt.awaitReplication();
     }
 
+    var excludedNamespaces = [ "excluded.excluded", "partial.excluded" ];
+    var includedNamespaces = [ "included.included", "partial.included" ];
+    var bothNamespaces = [].concat(excludedNamespaces).concat(includedNamespaces);
+
     // Write some data.
-    function writeData(rt, w) {
+    function writeData(rt, writeConcern) {
         var primary = rt.getPrimary();
-        var wtimeout = 60 * 1000;
-        var options = {writeConcern: {w, wtimeout}};
-        assert.writeOK(primary.getDB("excluded").excluded.insert({x: 1}, options));
-        assert.writeOK(primary.getDB("included").included.insert({x: 2}, options));
-        assert.writeOK(primary.getDB("partial").excluded.insert({x: 3}, options));
-        assert.writeOK(primary.getDB("partial").included.insert({x: 4}, options));
+        var options = {writeConcern};
+        bothNamespaces.forEach( (ns) => assert.writeOK(primary.getCollection(ns).insert({x: ns}, options)) );
     }
 
     // Check that the data is where it should be.
-    function checkData(rt) {
+    function checkData(rt, numCopies) {
         rt.awaitReplication();
 
         // The regular node should have everything.
-        assert.eq(1, rt.nodes[1].getDB("excluded").excluded.findOne().x);
-        assert.eq(2, rt.nodes[1].getDB("included").included.findOne().x);
-        assert.eq(3, rt.nodes[1].getDB("partial").excluded.findOne().x);
-        assert.eq(4, rt.nodes[1].getDB("partial").included.findOne().x);
+        bothNamespaces.forEach( (ns) => assert.eq(numCopies, rt.nodes[1].getCollection(ns).find({x:ns}).count()) );
+        bothNamespaces.forEach( (ns) => rt.nodes[1].getCollection(ns).find({x:ns}).forEach( (doc) => assert.eq(ns, doc.x) ) );
 
         // The filtered node should only have the included things, and none of the excluded things.
-        assert.eq(null, rt.nodes[2].getDB("excluded").excluded.findOne());
-        assert.eq(2, rt.nodes[2].getDB("included").included.findOne().x);
-        assert.eq(null, rt.nodes[2].getDB("partial").excluded.findOne());
-        assert.eq(4, rt.nodes[2].getDB("partial").included.findOne().x);
+        excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find({x:ns}).count()) );
+        excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find().count()) );
+        excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).count()) );
+        includedNamespaces.forEach( (ns) => assert.eq(numCopies, rt.nodes[2].getCollection(ns).find({x:ns}).count()) );
+        includedNamespaces.forEach( (ns) => rt.nodes[2].getCollection(ns).find({x:ns}).forEach( (doc) => assert.eq(ns, doc.x) ) );
     }
 
     // Check that the oplogs are how they should be.
     function checkOplogs(rt, nodeNum) {
         rt.awaitReplication();
-        var primary = rt.getPrimary();
-        primary.getDB("local").oplog.rs.find( { op: { $ne: "n" } } ).sort( { $natural: 1 } ).forEach( function(op) {
+        rt.getPrimary().getDB("local").oplog.rs.find( { op: { $ne: "n" } } ).sort( { $natural: 1 } ).forEach( function(op) {
             checkOpInOplog(rt.nodes[nodeNum], op, 1);
         });
     }
@@ -102,8 +100,8 @@ load("jstests/replsets/rslib.js");
     (function() {
         jsTestLog("START: Test a set which begins life with a filtered node.");
         var rt = initReplsetWithFilteredNode();
-        writeData(rt, 1);
-        checkData(rt);
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 });
+        checkData(rt, 1);
         checkOplogs(rt, 1);
         checkOplogs(rt, 2);
         rt.stopSet();
@@ -113,8 +111,8 @@ load("jstests/replsets/rslib.js");
         jsTestLog("START: Test a set which begins life without a filtered node, but then gets added immediately.");
         var rt = initReplsetWithoutFilteredNode();
         addFilteredNode(rt);
-        writeData(rt, 1);
-        checkData(rt);
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 });
+        checkData(rt, 1);
         checkOplogs(rt, 1);
         checkOplogs(rt, 2);
         rt.stopSet();
@@ -123,10 +121,11 @@ load("jstests/replsets/rslib.js");
     (function() {
         jsTestLog("START: Test a set which begins life without a filtered node, but then gets added later, ie. initial sync.");
         var rt = initReplsetWithoutFilteredNode();
-        writeData(rt, 1);
+        writeData(rt, { w: 1, wtimeout: 60 * 1000 });
         addFilteredNode(rt);
-        checkData(rt);
+        checkData(rt, 1);
         checkOplogs(rt, 1);
         rt.stopSet();
     })();
+
 }());
