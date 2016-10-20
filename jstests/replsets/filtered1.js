@@ -125,7 +125,7 @@ load("jstests/replsets/rslib.js");
         var rt = initReplsetWithoutFilteredNode();
         writeData(rt, 1);
         addFilteredNode(rt);
-        //checkData(rt);     // enable once initial sync is fixed
+        checkData(rt);
         checkOplogs(rt, 1);
         rt.stopSet();
     })();
