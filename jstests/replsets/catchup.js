@@ -68,13 +68,6 @@ load("jstests/replsets/rslib.js");
         }
     }
 
-    function checkOpInOplog(node, op, count) {
-        node.getDB("admin").getMongo().setSlaveOk();
-        var oplog = node.getDB("local")['oplog.rs'];
-        var oplogArray = oplog.find().toArray();
-        assert.eq(oplog.count(op), count, "op: " + tojson(op) + ", oplog: " + tojson(oplogArray));
-    }
-
     function isEarlierTimestamp(ts1, ts2) {
         if (ts1.getTime() == ts2.getTime()) {
             return ts1.getInc() < ts2.getInc();
