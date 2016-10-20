@@ -153,7 +153,7 @@ public:
     virtual HostAndPort chooseNewSyncSource(Date_t now,
                                             const Timestamp& lastTimestampApplied,
                                             ChainingPreference chainingPreference,
-                                            bool ignoreFilteredNodes);
+                                            bool ignoreFilteredNodes = false);
     virtual void blacklistSyncSource(const HostAndPort& host, Date_t until);
     virtual void unblacklistSyncSource(const HostAndPort& host, Date_t now);
     virtual void clearSyncSourceBlacklist();
