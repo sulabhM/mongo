@@ -541,7 +541,8 @@ Status DataReplicator::_runInitialSyncAttempt_inlock(OperationContext* txn,
                 return (name != "local");
             },
             stdx::bind(
-                &DataReplicator::_onDataClonerFinish, this, stdx::placeholders::_1, syncSource)),
+                &DataReplicator::_onDataClonerFinish, this, stdx::placeholders::_1, syncSource),
+	    txn),
         initialSyncFinishEvent));
 
     const NamespaceString ns(_opts.remoteOplogNS);

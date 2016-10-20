@@ -48,6 +48,7 @@
 #include "mongo/util/destructor_guard.h"
 #include "mongo/util/log.h"
 #include "mongo/util/mongoutils/str.h"
+#include "mongo/db/repl/replication_coordinator_global.h"
 
 namespace mongo {
 namespace repl {
@@ -70,14 +71,16 @@ DatabasesCloner::DatabasesCloner(StorageInterface* si,
                                  OldThreadPool* dbWorkThreadPool,
                                  HostAndPort source,
                                  IncludeDbFilterFn includeDbPred,
-                                 OnFinishFn finishFn)
+                                 OnFinishFn finishFn,
+				 OperationContext* txn)
     : _status(ErrorCodes::NotYetInitialized, ""),
       _exec(exec),
       _dbWorkThreadPool(dbWorkThreadPool),
       _source(source),
       _includeDbFn(includeDbPred),
       _finishFn(finishFn),
-      _storage(si) {
+      _storage(si),
+      _txn(txn) {
     uassert(ErrorCodes::InvalidOptions, "storage interface must be provided.", si);
     uassert(ErrorCodes::InvalidOptions, "executor must be provided.", exec);
     uassert(
@@ -232,12 +235,32 @@ void DatabasesCloner::_onListDatabaseFinish(const CommandCallbackArgs& cbd) {
         }
 
         const std::string dbName = dbBSON["name"].str();
+	// Check if we are replicating this database or any collection in this
+	// database
+	if (_txn &&
+	    !ReplicationCoordinator::get(_txn)->isNamespaceReplicated(dbName)) {
+		log() << "Database cloner skipping non replicated db: "
+		      << dbName;
+		continue;
+	}
+
         std::shared_ptr<DatabaseCloner> dbCloner{nullptr};
 
         // filters for DatabasesCloner.
-        const auto collectionFilterPred = [dbName](const BSONObj& collInfo) {
+	OperationContext *tmp_txn = _txn;
+        const auto collectionFilterPred = [dbName, tmp_txn](const BSONObj& collInfo) {
             const auto collName = collInfo["name"].str();
             const NamespaceString ns(dbName, collName);
+
+	    // At this point we are replicating this database, check if
+	    // collections to be replicated were specifically specified for
+	    // this database. If so, skip ones not specified
+	    if (tmp_txn &&
+		!ReplicationCoordinator::get(tmp_txn)->isNamespaceReplicated(ns.toString())) {
+		log() << "Database cloner iterating collections and skipping ns: "
+		      << ns;
+		return false;
+	    }
             if (ns.isSystem() && !legalClientSystemNS(ns.ns())) {
                 LOG(1) << "Skipping 'system' collection: " << ns.ns();
                 return false;
