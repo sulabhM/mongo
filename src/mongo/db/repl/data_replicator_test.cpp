@@ -85,7 +85,8 @@ class SyncSourceSelectorMock : public SyncSourceSelector {
 public:
     SyncSourceSelectorMock(const HostAndPort& syncSource) : _syncSource(syncSource) {}
     void clearSyncSourceBlacklist() override {}
-    HostAndPort chooseNewSyncSource(const Timestamp& ts) override {
+    HostAndPort chooseNewSyncSource(const Timestamp& ts,
+                                    bool ignoreFilteredNodes = false) override {
         HostAndPort result = _syncSource;
         _syncSource = HostAndPort();
         return result;
@@ -129,7 +130,8 @@ public:
     void clearSyncSourceBlacklist() override {
         _syncSourceSelector->clearSyncSourceBlacklist();
     }
-    HostAndPort chooseNewSyncSource(const Timestamp& ts) override {
+    HostAndPort chooseNewSyncSource(const Timestamp& ts,
+                                    bool ignoreFilteredNodes = false) override {
         return _syncSourceSelector->chooseNewSyncSource(ts);
     }
     void blacklistSyncSource(const HostAndPort& host, Date_t until) override {
@@ -1551,7 +1553,8 @@ class TestSyncSourceSelector2 : public SyncSourceSelector {
 
 public:
     void clearSyncSourceBlacklist() override {}
-    HostAndPort chooseNewSyncSource(const Timestamp& ts) override {
+    HostAndPort chooseNewSyncSource(const Timestamp& ts,
+                                    bool ignoreFilteredNodes = false) override {
         LockGuard lk(_mutex);
         auto result = HostAndPort(str::stream() << "host-" << _nextSourceNum++, -1);
         _condition.notify_all();
@@ -1685,7 +1688,8 @@ class ShutdownExecutorSyncSourceSelector : public SyncSourceSelector {
 public:
     ShutdownExecutorSyncSourceSelector(executor::TaskExecutor* exec) : _exec(exec) {}
     void clearSyncSourceBlacklist() override {}
-    HostAndPort chooseNewSyncSource(const Timestamp& ts) override {
+    HostAndPort chooseNewSyncSource(const Timestamp& ts,
+                                    bool ignoreFilteredNodes = false) override {
         _exec->shutdown();
         return HostAndPort();
     }
