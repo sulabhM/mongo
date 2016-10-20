@@ -264,7 +264,7 @@ public:
     virtual bool isReplEnabled() const override;
 
     virtual HostAndPort chooseNewSyncSource(const Timestamp& lastTimestampFetched,
-					    bool ignoreFilteredNodes = false) override;
+                                            bool ignoreFilteredNodes = false) override;
 
     virtual void blacklistSyncSource(const HostAndPort& host, Date_t until) override;
 

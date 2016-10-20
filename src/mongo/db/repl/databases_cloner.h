@@ -80,7 +80,7 @@ public:
                     HostAndPort source,
                     IncludeDbFilterFn includeDbPred,
                     OnFinishFn finishFn,
-		    OperationContext* txn = NULL);
+                    OperationContext* txn = NULL);
 
     ~DatabasesCloner();
 
@@ -157,7 +157,7 @@ private:
     std::unique_ptr<RemoteCommandRetryScheduler> _listDBsScheduler;  // (M) scheduler for listDBs.
     std::vector<std::shared_ptr<DatabaseCloner>> _databaseCloners;   // (M) database cloners by name
     Stats _stats;                                                    // (M)
-    OperationContext* _txn;		// Op context
+    OperationContext* _txn;                                          // Op context
 };
 
 

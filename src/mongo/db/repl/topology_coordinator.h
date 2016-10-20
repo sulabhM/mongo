@@ -140,7 +140,7 @@ public:
     virtual HostAndPort chooseNewSyncSource(Date_t now,
                                             const Timestamp& lastTimestampApplied,
                                             ChainingPreference chainingPreference,
-					    bool ignoreFilteredNodes) = 0;
+                                            bool ignoreFilteredNodes) = 0;
 
     /**
      * Suppresses selecting "host" as sync source until "until".

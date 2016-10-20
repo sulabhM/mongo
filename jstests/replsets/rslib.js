@@ -86,12 +86,9 @@ var awaitRSClientHosts;
     checkOpInOplog = function(node, op, count) {
         node.getDB("admin").getMongo().setSlaveOk();
         var oplog = node.getDB("local")['oplog.rs'];
-        try {
-            assert.eq(oplog.count(op), count, "op: " + tojson(op));
-        } catch(e) {
-            e += ", oplog: " + tojson(oplog.find().toArray());
-            throw(e);
-        }
+        assert.eq(oplog.count(op), count, {
+            toString: () => ("op: " + tojson(op) + ", oplog: " + tojson(oplog.find().toArray()))
+        });
     };
 
     waitForAllMembers = function(master, timeout) {

@@ -10,7 +10,12 @@ function initReplsetWithFilteredNode(name) {
         members: [
             {_id: 0, host: rt.nodes[0].host, priority: 3},
             {_id: 1, host: rt.nodes[1].host, priority: 0},
-            {_id: 2, host: rt.nodes[2].host, priority: 0, filter: [ "admin", "included", "partial.included" ] },
+            {
+              _id: 2,
+              host: rt.nodes[2].host,
+              priority: 0,
+              filter: ["admin", "included", "partial.included"]
+            },
         ],
     });
     rt.waitForState(rt.nodes[0], ReplSetTest.State.PRIMARY);
@@ -38,7 +43,7 @@ function initReplsetWithoutFilteredNode(name) {
     rt.awaitNodesAgreeOnPrimary();
     rt.awaitReplication();
     rt.numCopiesWritten = 0;
-    //jsTestLog(tojson(rt));
+    // jsTestLog(tojson(rt));
     return rt;
 }
 
@@ -46,7 +51,12 @@ function addFilteredNode(rt) {
     rt.awaitReplication();
     var cfg = rt.getReplSetConfigFromNode();
     cfg.version++;
-    cfg.members.push({_id: 2, host: rt.lastNode.host, priority: 0, filter: [ "admin", "included", "partial.included" ] });
+    cfg.members.push({
+        _id: 2,
+        host: rt.lastNode.host,
+        priority: 0,
+        filter: ["admin", "included", "partial.included"]
+    });
     rt.nodeOptions.n2 = rt.lastNodeOptions;
     rt.ports.push(rt.lastPort);
     rt.nodes.push(rt.lastNode);
@@ -57,7 +67,8 @@ function addFilteredNode(rt) {
 
 // Force node "node" to sync from node "from".
 function syncNodeFrom(rt, node, from) {
-    assert.commandWorked(rt.nodes[node].getDB("admin").runCommand({"replSetSyncFrom": rt.nodes[from].host}));
+    assert.commandWorked(
+        rt.nodes[node].getDB("admin").runCommand({"replSetSyncFrom": rt.nodes[from].host}));
     var res;
     assert.soon(
         function() {
@@ -65,7 +76,8 @@ function syncNodeFrom(rt, node, from) {
             return res.syncingTo === rt.nodes[from].host;
         },
         function() {
-            return "node " + node + " failed to start syncing from node " + from + ": " + tojson(res);
+            return "node " + node + " failed to start syncing from node " + from + ": " +
+                tojson(res);
         });
 }
 
@@ -74,33 +86,40 @@ function normalNodeSyncFromFilteredNode(rt) {
     syncNodeFrom(rt, 1, 2);
 }
 
-var excludedNamespaces = [ "excluded.excluded", "partial.excluded" ];
-var includedNamespaces = [ "included.included", "partial.included" ];
+var excludedNamespaces = ["excluded.excluded", "partial.excluded"];
+var includedNamespaces = ["included.included", "partial.included"];
 var bothNamespaces = [].concat(excludedNamespaces).concat(includedNamespaces);
 
 // Write some data.
 function writeData(rt, writeConcern, expectedResult) {
     var primary = rt.getPrimary();
     var options = {writeConcern};
-    bothNamespaces.forEach( (ns) => expectedResult(primary.getCollection(ns).insert({x: ns}, options)) );
+    bothNamespaces.forEach((ns) =>
+                               expectedResult(primary.getCollection(ns).insert({x: ns}, options)));
     rt.numCopiesWritten++;
 }
 
 // The regular node should have everything.
 function checkUnfilteredData(rt) {
     rt.awaitReplication();
-    bothNamespaces.forEach( (ns) => assert.eq(rt.numCopiesWritten, rt.nodes[1].getCollection(ns).find({x:ns}).count()) );
-    bothNamespaces.forEach( (ns) => rt.nodes[1].getCollection(ns).find({x:ns}).forEach( (doc) => assert.eq(ns, doc.x) ) );
+    bothNamespaces.forEach((ns) => assert.eq(rt.numCopiesWritten,
+                                             rt.nodes[1].getCollection(ns).find({x: ns}).count()));
+    bothNamespaces.forEach(
+        (ns) => rt.nodes[1].getCollection(ns).find({x: ns}).forEach((doc) => assert.eq(ns, doc.x)));
 }
 
 // The filtered node should only have the included things, and none of the excluded things.
 function checkFilteredData(rt) {
     rt.awaitReplication();
-    excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find({x:ns}).count()) );
-    excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find().count()) );
-    excludedNamespaces.forEach( (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).count()) );
-    includedNamespaces.forEach( (ns) => assert.eq(rt.numCopiesWritten, rt.nodes[2].getCollection(ns).find({x:ns}).count()) );
-    includedNamespaces.forEach( (ns) => rt.nodes[2].getCollection(ns).find({x:ns}).forEach( (doc) => assert.eq(ns, doc.x) ) );
+    excludedNamespaces.forEach(
+        (ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find({x: ns}).count()));
+    excludedNamespaces.forEach((ns) => assert.eq(0, rt.nodes[2].getCollection(ns).find().count()));
+    excludedNamespaces.forEach((ns) => assert.eq(0, rt.nodes[2].getCollection(ns).count()));
+    includedNamespaces.forEach(
+        (ns) =>
+            assert.eq(rt.numCopiesWritten, rt.nodes[2].getCollection(ns).find({x: ns}).count()));
+    includedNamespaces.forEach(
+        (ns) => rt.nodes[2].getCollection(ns).find({x: ns}).forEach((doc) => assert.eq(ns, doc.x)));
 }
 
 // Check that all the data is where it should be.
@@ -112,14 +131,18 @@ function checkData(rt) {
 // Check that the oplogs are how they should be.
 function checkOplogs(rt, nodeNum) {
     rt.awaitReplication();
-    rt.getPrimary().getDB("local").oplog.rs.find( { op: { $ne: "n" } } ).sort( { $natural: 1 } ).forEach( function(op) {
-        checkOpInOplog(rt.nodes[nodeNum], op, 1);
-    });
+    rt.getPrimary()
+        .getDB("local")
+        .oplog.rs.find({op: {$ne: "n"}})
+        .sort({$natural: 1})
+        .forEach(function(op) {
+            checkOpInOplog(rt.nodes[nodeNum], op, 1);
+        });
 }
 
 function testReplSetWriteConcern(f) {
-    [ 2, "majority" ].forEach( (w) => {
-        [ false, true ].forEach( (j) => {
+    [2, "majority"].forEach((w) => {
+        [false, true].forEach((j) => {
             jsTestLog("Write concern: " + tojson({w, j}));
             f(w, j);
         });
@@ -127,8 +150,13 @@ function testReplSetWriteConcern(f) {
 }
 
 function testReplSetWriteConcernForFailure(rt) {
-    testReplSetWriteConcern( (w, j) => {
-        writeData(rt, { w, j, wtimeout: 5 * 1000 }, (x) => assert.eq(true, assert.writeErrorWithCode(x, ErrorCodes.WriteConcernFailed).getWriteConcernError().errInfo.wtimeout));
+    testReplSetWriteConcern((w, j) => {
+        writeData(rt,
+                  {w, j, wtimeout: 5 * 1000},
+                  (x) => assert.eq(true,
+                                   assert.writeErrorWithCode(x, ErrorCodes.WriteConcernFailed)
+                                       .getWriteConcernError()
+                                       .errInfo.wtimeout));
         checkFilteredData(rt);
         checkOplogs(rt, 2);
     });
@@ -138,8 +166,8 @@ function testReplSetWriteConcernForSuccess(rt, checkFilteredOplogs) {
     if (typeof(checkFilteredOplogs) == "undefined") {
         checkFilteredOplogs = true;
     }
-    testReplSetWriteConcern( (w, j) => {
-        writeData(rt, { w, j, wtimeout: 60 * 1000 }, assert.writeOK);
+    testReplSetWriteConcern((w, j) => {
+        writeData(rt, {w, j, wtimeout: 60 * 1000}, assert.writeOK);
         checkData(rt);
         checkOplogs(rt, 1);
         if (checkFilteredOplogs) {
@@ -147,4 +175,3 @@ function testReplSetWriteConcernForSuccess(rt, checkFilteredOplogs) {
         }
     });
 }
-

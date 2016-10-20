@@ -6,7 +6,7 @@
     jsTestLog("START: Test syncing oplog via filtered node.");
 
     var rt = initReplsetWithFilteredNode("filtered5");
-    writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
+    writeData(rt, {w: 1, wtimeout: 60 * 1000}, assert.writeOK);
 
     checkData(rt);
     checkOplogs(rt, 1);
@@ -15,7 +15,7 @@
     normalNodeSyncFromFilteredNode(rt);
 
     // Do a write and make sure it propagates correctly.
-    writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
+    writeData(rt, {w: 1, wtimeout: 60 * 1000}, assert.writeOK);
     checkData(rt);
     checkOplogs(rt, 1);
     checkOplogs(rt, 2);

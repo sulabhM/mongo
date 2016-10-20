@@ -342,9 +342,11 @@ bool MemberConfig::isNamespaceReplicated(std::string ns) const {
         }
     } else {
         // ns is just a dbname, but there is no exact filter rule for that dbname.
-        // this should be replicated if we have any filter rules which are for a collection in this db.
+        // this should be replicated if we have any filter rules which are for a collection in this
+        // db.
 
-        // need to loop through the filter rules, and for each one, if it has a dot, then get the dbname, and if it matches, then return true.
+        // need to loop through the filter rules, and for each one, if it has a dot, then get the
+        // dbname, and if it matches, then return true.
         log() << "checking all filter rules for dbname = " << ns;
         for (FilterIterator filterIter = _filter.begin(); filterIter != _filter.end();
              filterIter++) {
@@ -389,8 +391,7 @@ BSONObj MemberConfig::toBSON(const ReplicaSetTagConfig& tagConfig) const {
     configBuilder.append("votes", getNumVotes());
 
     BSONArrayBuilder filter(configBuilder.subarrayStart("filter"));
-    for (FilterIterator filterIter = _filter.begin(); filterIter != _filter.end();
-         filterIter++) {
+    for (FilterIterator filterIter = _filter.begin(); filterIter != _filter.end(); filterIter++) {
         filter.append(*filterIter);
     }
     filter.done();

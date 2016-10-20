@@ -28,9 +28,9 @@
 
 #pragma once
 
+#include <set>
 #include <string>
 #include <vector>
-#include <set>
 
 #include "mongo/base/status.h"
 #include "mongo/db/repl/replica_set_tag.h"

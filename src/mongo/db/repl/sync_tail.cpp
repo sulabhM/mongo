@@ -332,9 +332,10 @@ Status SyncTail::syncApply(OperationContext* txn,
             cmdns += collName;
             log() << "cmdns after adding collName = " << cmdns;
         }
-        // at this point, cmdns is the more appropriate of either just the dbname, or the full namespace
+        // at this point, cmdns is the more appropriate of either just the dbname, or the full
+        // namespace
 
-        if ( ! ReplicationCoordinator::get(txn)->isNamespaceReplicated(cmdns)) {
+        if (!ReplicationCoordinator::get(txn)->isNamespaceReplicated(cmdns)) {
             return Status::OK();
         }
 
@@ -351,7 +352,7 @@ Status SyncTail::syncApply(OperationContext* txn,
         MONGO_WRITE_CONFLICT_RETRY_LOOP_END(txn, "syncApply_command", ns);
     }
 
-    if ( ! ReplicationCoordinator::get(txn)->isNamespaceReplicated(std::string(ns))) {
+    if (!ReplicationCoordinator::get(txn)->isNamespaceReplicated(std::string(ns))) {
         return Status::OK();
     }
 

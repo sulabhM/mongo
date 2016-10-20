@@ -39,6 +39,7 @@
 #include "mongo/client/remote_command_retry_scheduler.h"
 #include "mongo/db/catalog/collection_options.h"
 #include "mongo/db/client.h"
+#include "mongo/db/repl/replication_coordinator_global.h"
 #include "mongo/db/repl/storage_interface.h"
 #include "mongo/db/server_parameters.h"
 #include "mongo/rpc/get_status_from_command_result.h"
@@ -48,7 +49,6 @@
 #include "mongo/util/destructor_guard.h"
 #include "mongo/util/log.h"
 #include "mongo/util/mongoutils/str.h"
-#include "mongo/db/repl/replication_coordinator_global.h"
 
 namespace mongo {
 namespace repl {
@@ -72,7 +72,7 @@ DatabasesCloner::DatabasesCloner(StorageInterface* si,
                                  HostAndPort source,
                                  IncludeDbFilterFn includeDbPred,
                                  OnFinishFn finishFn,
-				 OperationContext* txn)
+                                 OperationContext* txn)
     : _status(ErrorCodes::NotYetInitialized, ""),
       _exec(exec),
       _dbWorkThreadPool(dbWorkThreadPool),
@@ -235,32 +235,29 @@ void DatabasesCloner::_onListDatabaseFinish(const CommandCallbackArgs& cbd) {
         }
 
         const std::string dbName = dbBSON["name"].str();
-	// Check if we are replicating this database or any collection in this
-	// database
-	if (_txn &&
-	    !ReplicationCoordinator::get(_txn)->isNamespaceReplicated(dbName)) {
-		log() << "Database cloner skipping non replicated db: "
-		      << dbName;
-		continue;
-	}
+        // Check if we are replicating this database or any collection in this
+        // database
+        if (_txn && !ReplicationCoordinator::get(_txn)->isNamespaceReplicated(dbName)) {
+            log() << "Database cloner skipping non replicated db: " << dbName;
+            continue;
+        }
 
         std::shared_ptr<DatabaseCloner> dbCloner{nullptr};
 
         // filters for DatabasesCloner.
-	OperationContext *tmp_txn = _txn;
+        OperationContext* tmp_txn = _txn;
         const auto collectionFilterPred = [dbName, tmp_txn](const BSONObj& collInfo) {
             const auto collName = collInfo["name"].str();
             const NamespaceString ns(dbName, collName);
 
-	    // At this point we are replicating this database, check if
-	    // collections to be replicated were specifically specified for
-	    // this database. If so, skip ones not specified
-	    if (tmp_txn &&
-		!ReplicationCoordinator::get(tmp_txn)->isNamespaceReplicated(ns.toString())) {
-		log() << "Database cloner iterating collections and skipping ns: "
-		      << ns;
-		return false;
-	    }
+            // At this point we are replicating this database, check if
+            // collections to be replicated were specifically specified for
+            // this database. If so, skip ones not specified
+            if (tmp_txn &&
+                !ReplicationCoordinator::get(tmp_txn)->isNamespaceReplicated(ns.toString())) {
+                log() << "Database cloner iterating collections and skipping ns: " << ns;
+                return false;
+            }
             if (ns.isSystem() && !legalClientSystemNS(ns.ns())) {
                 LOG(1) << "Skipping 'system' collection: " << ns.ns();
                 return false;

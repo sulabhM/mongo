@@ -6,7 +6,7 @@
     jsTestLog("START: Test that filtered nodes don't contribute to write concern.");
 
     var rt = initReplsetWithFilteredNode("filtered4");
-    writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
+    writeData(rt, {w: 1, wtimeout: 60 * 1000}, assert.writeOK);
 
     checkData(rt);
     checkOplogs(rt, 1);
