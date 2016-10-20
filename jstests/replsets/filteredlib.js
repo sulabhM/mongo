@@ -10,7 +10,7 @@ function initReplsetWithFilteredNode(name) {
         members: [
             {_id: 0, host: rt.nodes[0].host, priority: 3},
             {_id: 1, host: rt.nodes[1].host, priority: 0},
-            {_id: 2, host: rt.nodes[2].host, priority: 0, filter: [ "included", "partial.included" ] },
+            {_id: 2, host: rt.nodes[2].host, priority: 0, filter: [ "admin", "included", "partial.included" ] },
         ],
     });
     rt.waitForState(rt.nodes[0], ReplSetTest.State.PRIMARY);
