@@ -3,16 +3,17 @@
 
     load("jstests/replsets/filteredlib.js");
 
-    jsTestLog("START: Test a set which begins life with a filtered node.");
+    jsTestLog("START: Test that filtered nodes don't contribute to write concern.");
 
-    var rt = initReplsetWithFilteredNode("filtered1");
+    var rt = initReplsetWithFilteredNode("filtered4");
     writeData(rt, { w: 1, wtimeout: 60 * 1000 }, assert.writeOK);
 
     checkData(rt);
     checkOplogs(rt, 1);
     checkOplogs(rt, 2);
 
-    testReplSetWriteConcernForSuccess(rt);
+    rt.stop(1);
+    testReplSetWriteConcernForFailure(rt);
 
     rt.stopSet();
 }());
