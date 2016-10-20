@@ -3044,7 +3044,8 @@ bool ReplicationCoordinatorImpl::isReplEnabled() const {
     return getReplicationMode() != modeNone;
 }
 
-HostAndPort ReplicationCoordinatorImpl::chooseNewSyncSource(const Timestamp& lastTimestampFetched) {
+HostAndPort ReplicationCoordinatorImpl::chooseNewSyncSource(const Timestamp& lastTimestampFetched,
+							    bool ignoreFilteredNodes) {
     LockGuard topoLock(_topoMutex);
 
     HostAndPort oldSyncSource = _topCoord->getSyncSourceAddress();
@@ -3052,9 +3053,9 @@ HostAndPort ReplicationCoordinatorImpl::chooseNewSyncSource(const Timestamp& las
         ? TopologyCoordinator::ChainingPreference::kAllowChaining
         : TopologyCoordinator::ChainingPreference::kUseConfiguration;
 
-    bool ignoreFilteredNodes;
-    if (MemberState::RS_STARTUP2 == getMemberState().s ||
-        MemberState::RS_ROLLBACK == getMemberState().s) {
+    if (!ignoreFilteredNodes &&
+	(MemberState::RS_STARTUP2 == getMemberState().s ||
+         MemberState::RS_ROLLBACK == getMemberState().s)) {
 	    log() << "MemberState: " << getMemberState().toString() << ": "
 	          << "Will ignore filtered nodes in source selection.";
 	    ignoreFilteredNodes = true;

@@ -554,11 +554,22 @@ void BackgroundSync::consume(OperationContext* txn) {
 void BackgroundSync::_rollback(OperationContext* txn,
                                const HostAndPort& source,
                                stdx::function<DBClientBase*()> getConnection) {
+    HostAndPort newSource = source;
+    // Don't do rollback with a filtered source.
+    // If source is a filtered node, we will select a new one
+    if (ReplicationCoordinator::get(txn)->getConfig().findMemberByHostAndPort(source)->isFiltered()) {
+	   // get a new source
+	   newSource = _replCoord->chooseNewSyncSource(
+		_replCoord->getMyLastAppliedOpTime().getTimestamp(), true);
+	   log() << "rollback on node with syncSource: " << source << ". "
+	         << "Source is filtered, so selected new source: " << newSource;
+    }
+
     // Abort only when syncRollback detects we are in a unrecoverable state.
     // In other cases, we log the message contained in the error status and retry later.
     auto status = syncRollback(txn,
                                OplogInterfaceLocal(txn, rsOplogName),
-                               RollbackSourceImpl(getConnection, source, rsOplogName),
+                               RollbackSourceImpl(getConnection, newSource, rsOplogName),
                                _replCoord);
     if (status.isOK()) {
         // When the syncTail thread sees there is no new data by adding something to the buffer.
