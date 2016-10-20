@@ -3056,7 +3056,7 @@ HostAndPort ReplicationCoordinatorImpl::chooseNewSyncSource(const Timestamp& las
     if (MemberState::RS_STARTUP2 == getMemberState().s ||
         MemberState::RS_ROLLBACK == getMemberState().s) {
 	    log() << "MemberState: " << getMemberState().toString() << ": "
-	    log() << "Will ignore filtered nodes in source selection."
+	          << "Will ignore filtered nodes in source selection.";
 	    ignoreFilteredNodes = true;
     }
     HostAndPort newSyncSource = _topCoord->chooseNewSyncSource(
