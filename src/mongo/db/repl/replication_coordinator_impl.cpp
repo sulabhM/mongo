@@ -1020,6 +1020,14 @@ void ReplicationCoordinatorImpl::_updateSlaveInfoDurableOpTime_inlock(SlaveInfo*
               << slaveInfo->toString();
         return;
     }
+
+    // Filtered members are never considered to be durable.
+    const MemberConfig* memberConfig = _rsConfig.findMemberByID(slaveInfo->memberId);
+    invariant(memberConfig);
+    if (memberConfig->isFiltered()) {
+        return;
+    }
+
     slaveInfo->lastDurableOpTime = opTime;
     slaveInfo->lastUpdate = _replExecutor.now();
     slaveInfo->down = false;
@@ -1535,7 +1543,14 @@ bool ReplicationCoordinatorImpl::_haveNumNodesReachedOpTime_inlock(const OpTime&
     }
 
     for (SlaveInfoVector::iterator it = _slaveInfo.begin(); it != _slaveInfo.end(); ++it) {
+        const MemberConfig* memberConfig = _rsConfig.findMemberByID(it->memberId);
+        invariant(memberConfig);
         const OpTime& slaveTime = durablyWritten ? it->lastDurableOpTime : it->lastAppliedOpTime;
+        // Filtered members can never contribute to write concern.
+        if (memberConfig->isFiltered()) {
+            continue;
+        }
+
         if (slaveTime >= targetOpTime) {
             --numNodes;
         }
@@ -1557,6 +1572,10 @@ bool ReplicationCoordinatorImpl::_haveTaggedNodesReachedOpTime_inlock(
             // of the tagPattern.
             const MemberConfig* memberConfig = _rsConfig.findMemberByID(it->memberId);
             invariant(memberConfig);
+            // Filtered members can never contribute to write concern.
+            if (memberConfig->isFiltered()) {
+                continue;
+            }
             for (MemberConfig::TagIterator it = memberConfig->tagsBegin();
                  it != memberConfig->tagsEnd();
                  ++it) {
