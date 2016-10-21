@@ -83,6 +83,9 @@ function syncNodeFrom(rt, node, from) {
 
 // Force node 1 (regular node) to sync from node 2 (filtered node).
 function normalNodeSyncFromFilteredNode(rt) {
+    // Have to first force the filtered node to sync from the primary, in case it happens to have
+    // been syncing from the regular node.
+    syncNodeFrom(rt, 2, 0);
     syncNodeFrom(rt, 1, 2);
 }
 
