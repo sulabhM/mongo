@@ -1545,11 +1545,10 @@ bool ReplicationCoordinatorImpl::_haveNumNodesReachedOpTime_inlock(const OpTime&
     }
 
     for (SlaveInfoVector::iterator it = _slaveInfo.begin(); it != _slaveInfo.end(); ++it) {
-        const MemberConfig* memberConfig = _rsConfig.findMemberByID(it->memberId);
-        invariant(memberConfig);
         const OpTime& slaveTime = durablyWritten ? it->lastDurableOpTime : it->lastAppliedOpTime;
         // Filtered members can never contribute to write concern.
-        if (memberConfig->isFiltered()) {
+        const MemberConfig* memberConfig = _rsConfig.findMemberByID(it->memberId);
+        if (memberConfig && memberConfig->isFiltered()) {
             continue;
         }
 
