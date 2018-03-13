@@ -550,7 +550,8 @@ Status collModForUniqueIndexUpgrade(OperationContext* opCtx,
                             nss,
                             cmdObj,
                             &resultWeDontCareAbout,
-                            /*updateUniqueIndexVersion*/ true,
+                            /*Is unique idx upgrade if cmd is an empty collMod, i.e., nFields is 1*/
+			    cmdObj.nFields() == 1,
                             /*UUID*/ boost::none);
 }
 
