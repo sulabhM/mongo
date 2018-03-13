@@ -69,7 +69,7 @@ public:
                                  std::vector<std::string>* names) const = 0;
 
     virtual void getAllUniqueIndexes(OperationContext* opCtx,
-                                     std::vector<std::string>* names) const = 0;
+                                     std::vector<std::string>* names) const {}
 
     virtual BSONObj getIndexSpec(OperationContext* opCtx, StringData idxName) const = 0;
 
@@ -127,7 +127,7 @@ public:
                                   StringData idxName,
                                   long long newExpireSeconds) = 0;
 
-    virtual void updateIndexVersion(OperationContext* opCtx, StringData indexName) = 0;
+    virtual void updateIndexVersion(OperationContext* opCtx, StringData indexName) {}
 
     /**
      * Sets the flags field of CollectionOptions to newValue.

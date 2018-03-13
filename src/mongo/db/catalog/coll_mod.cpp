@@ -429,8 +429,7 @@ Status _collModInternal(OperationContext* opCtx,
         coll->getCatalogEntry()->getAllUniqueIndexes(opCtx, &indexNames);
 
         for (size_t i = 0; i < indexNames.size(); i++) {
-            const std::string& indexName = indexNames[i];
-            coll->getCatalogEntry()->updateIndexVersion(opCtx, indexName);
+            coll->getCatalogEntry()->updateIndexVersion(opCtx, indexNames[i]);
         }
     }
 
