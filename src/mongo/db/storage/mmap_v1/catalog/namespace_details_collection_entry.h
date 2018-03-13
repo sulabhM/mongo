@@ -68,6 +68,8 @@ public:
 
     void getReadyIndexes(OperationContext* opCtx, std::vector<std::string>* names) const final;
 
+    void getAllUniqueIndexes(OperationContext* opCtx, std::vector<std::string>* names) const;
+
     BSONObj getIndexSpec(OperationContext* opCtx, StringData idxName) const final;
 
     bool isIndexMultikey(OperationContext* opCtx,
@@ -99,6 +101,8 @@ public:
     void updateTTLSetting(OperationContext* opCtx,
                           StringData idxName,
                           long long newExpireSeconds) final;
+
+    void updateIndexVersion(OperationContext* opCtx, StringData indexName) final;
 
     void updateFlags(OperationContext* opCtx, int newValue) final;
 

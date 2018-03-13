@@ -299,6 +299,7 @@ Status _collModInternal(OperationContext* opCtx,
                         const NamespaceString& nss,
                         const BSONObj& cmdObj,
                         BSONObjBuilder* result,
+                        bool upgradeUniqueIndexVersion,
                         OptionalCollectionUUID uuid) {
     StringData dbName = nss.db();
     AutoGetDb autoDb(opCtx, dbName, MODE_X);
@@ -423,6 +424,16 @@ Status _collModInternal(OperationContext* opCtx,
     if (!cmr.noPadding.eoo())
         setCollectionOptionFlag(opCtx, coll, cmr.noPadding, result);
 
+    if (upgradeUniqueIndexVersion) {
+        std::vector<std::string> indexNames;
+        coll->getCatalogEntry()->getAllUniqueIndexes(opCtx, &indexNames);
+
+        for (size_t i = 0; i < indexNames.size(); i++) {
+            const std::string& indexName = indexNames[i];
+            coll->getCatalogEntry()->updateIndexVersion(opCtx, indexName);
+        }
+    }
+
     // Add collection UUID if it is missing. This returns an error if a collection already has a
     // different UUID. As we don't assign UUIDs to system.indexes (SERVER-29926), don't implicitly
     // upgrade them on collMod either.
@@ -511,7 +522,12 @@ Status collMod(OperationContext* opCtx,
                const NamespaceString& nss,
                const BSONObj& cmdObj,
                BSONObjBuilder* result) {
-    return _collModInternal(opCtx, nss, cmdObj, result, /*UUID*/ boost::none);
+    return _collModInternal(opCtx,
+                            nss,
+                            cmdObj,
+                            result,
+                            /*updateUniqueIndexVersion*/ false,
+                            /*UUID*/ boost::none);
 }
 
 Status collModForUUIDUpgrade(OperationContext* opCtx,
@@ -519,7 +535,24 @@ Status collModForUUIDUpgrade(OperationContext* opCtx,
                              const BSONObj& cmdObj,
                              CollectionUUID uuid) {
     BSONObjBuilder resultWeDontCareAbout;
-    return _collModInternal(opCtx, nss, cmdObj, &resultWeDontCareAbout, uuid);
+    return _collModInternal(opCtx,
+                            nss,
+                            cmdObj,
+                            &resultWeDontCareAbout,
+                            /*updateUniqueIndexVersion*/ false,
+                            uuid);
+}
+
+Status collModForUniqueIndexUpgrade(OperationContext* opCtx,
+                                    const NamespaceString& nss,
+                                    const BSONObj& cmdObj) {
+    BSONObjBuilder resultWeDontCareAbout;
+    return _collModInternal(opCtx,
+                            nss,
+                            cmdObj,
+                            &resultWeDontCareAbout,
+                            /*updateUniqueIndexVersion*/ true,
+                            /*UUID*/ boost::none);
 }
 
 void addCollectionUUIDs(OperationContext* opCtx) {
@@ -587,6 +620,56 @@ void addCollectionUUIDs(OperationContext* opCtx) {
 
     log() << "Finished adding UUIDs to collections, waiting for all UUIDs to be committed at optime"
           << awaitOpTime << ".";
+
+    const WriteConcernOptions writeConcern(WriteConcernOptions::kMajority,
+                                           WriteConcernOptions::SyncMode::UNSET,
+                                           /*timeout*/ INT_MAX);
+    repl::ReplicationCoordinator::get(opCtx)->awaitReplication(opCtx, awaitOpTime, writeConcern);
+}
+
+void _updateUniqueIndexVersionPerDatabase(OperationContext* opCtx, const std::string& dbname) {
+    // Iterate through all collections of the database
+    {
+        AutoGetDb autoDb(opCtx, dbname, MODE_X);
+        Database* const db = autoDb.getDb();
+        // If the database no longer exists, we're done with upgrading.
+        if (!db) {
+            return;
+        }
+
+        for (auto collectionIt = db->begin(); collectionIt != db->end(); ++collectionIt) {
+            Collection* coll = *collectionIt;
+
+            BSONObjBuilder collModObjBuilder;
+            collModObjBuilder.append("collMod", coll->ns().coll());
+            BSONObj collModObj = collModObjBuilder.done();
+
+            uassertStatusOK(collModForUniqueIndexUpgrade(opCtx, coll->ns(), collModObj));
+        }
+    }
+}
+
+void updateUniqueIndexVersionOnUpgrade(OperationContext* opCtx) {
+    // Update version for all unique indexs except the _id index.
+    std::vector<std::string> dbNames;
+    StorageEngine* storageEngine = opCtx->getServiceContext()->getGlobalStorageEngine();
+    {
+        Lock::GlobalLock lk(opCtx, MODE_IS, Date_t::max());
+        storageEngine->listDatabases(&dbNames);
+    }
+
+    for (auto it = dbNames.begin(); it != dbNames.end(); ++it) {
+        auto dbName = *it;
+
+        _updateUniqueIndexVersionPerDatabase(opCtx, dbName);
+    }
+
+    const auto& clientInfo = repl::ReplClientInfo::forClient(opCtx->getClient());
+    auto awaitOpTime = clientInfo.getLastOp();
+
+    log() << "Finished updating version of unique indexes for upgrade, waiting for all"
+          << " index updates to be committed at optime " << awaitOpTime;
+
 
     const WriteConcernOptions writeConcern(WriteConcernOptions::kMajority,
                                            WriteConcernOptions::SyncMode::UNSET,

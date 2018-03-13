@@ -139,8 +139,9 @@ IndexVersion IndexDescriptor::getDefaultIndexVersion(
     // "_id" indexes is on purpose, and in future if we were to make "_id" index specs
     // include "unique:true", then we would need to change the logic here to preserve its
     // behavior.
-    const bool useV2UniqueIndexFormat = false;
-    if (useV2UniqueIndexFormat && isUniqueIndex) {
+    if ((featureCompatibilityVersion ==
+         ServerGlobalParams::FeatureCompatibility::Version::kFullyUpgradedTo40) &&
+        isUniqueIndex) {
         return IndexVersion::kV2Unique;
     }
 

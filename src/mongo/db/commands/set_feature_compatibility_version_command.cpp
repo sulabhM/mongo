@@ -165,6 +165,9 @@ public:
                 Lock::GlobalLock lk(opCtx, MODE_S, Date_t::max());
             }
 
+            // Update version of unique indexes in the system catalog
+            updateUniqueIndexVersionOnUpgrade(opCtx);
+
             // Upgrade shards before config finishes its upgrade.
             if (serverGlobalParams.clusterRole == ClusterRole::ConfigServer) {
                 uassertStatusOK(

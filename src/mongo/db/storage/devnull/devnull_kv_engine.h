@@ -69,6 +69,10 @@ public:
                                                         StringData ident,
                                                         const IndexDescriptor* desc);
 
+    virtual Status updateIdentVersion(OperationContext* opCtx, StringData ident) {
+        return Status::OK();
+    }
+
     virtual Status dropIdent(OperationContext* opCtx, StringData ident) {
         return Status::OK();
     }

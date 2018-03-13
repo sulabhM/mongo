@@ -233,6 +233,17 @@ void KVCollectionCatalogEntry::updateTTLSetting(OperationContext* opCtx,
     _catalog->putMetaData(opCtx, ns().toString(), md);
 }
 
+void KVCollectionCatalogEntry::updateIndexVersion(OperationContext* opCtx, StringData indexName) {
+    MetaData md = _getMetaData(opCtx);
+    int offset = md.findIndexOffset(indexName);
+    invariant(offset >= 0);
+    md.indexes[offset].updateIndexVersion();
+    _catalog->putMetaData(opCtx, ns().toString(), md);
+
+    const string ident = _catalog->getIndexIdent(opCtx, ns().ns(), indexName);
+    _engine->updateIdentVersion(opCtx, ident);
+}
+
 void KVCollectionCatalogEntry::addUUID(OperationContext* opCtx,
                                        CollectionUUID uuid,
                                        Collection* coll) {

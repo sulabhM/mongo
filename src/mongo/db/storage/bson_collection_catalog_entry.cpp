@@ -154,6 +154,18 @@ void BSONCollectionCatalogEntry::getReadyIndexes(OperationContext* opCtx,
     }
 }
 
+void BSONCollectionCatalogEntry::getAllUniqueIndexes(OperationContext* opCtx,
+                                                     std::vector<std::string>* names) const {
+    MetaData md = _getMetaData(opCtx);
+
+    for (unsigned i = 0; i < md.indexes.size(); i++) {
+        if (md.indexes[i].spec["unique"]) {
+            std::string indexName = md.indexes[i].spec["name"].String();
+            names->push_back(indexName);
+        }
+    }
+}
+
 bool BSONCollectionCatalogEntry::isIndexMultikey(OperationContext* opCtx,
                                                  StringData indexName,
                                                  MultikeyPaths* multikeyPaths) const {
@@ -192,6 +204,21 @@ KVPrefix BSONCollectionCatalogEntry::getIndexPrefix(OperationContext* opCtx,
     int offset = md.findIndexOffset(indexName);
     invariant(offset >= 0);
     return md.indexes[offset].prefix;
+}
+
+void BSONCollectionCatalogEntry::IndexMetaData::updateIndexVersion() {
+    BSONObjBuilder b;
+    int version = 3;  // Use a constant instead of hardcoded value.
+    for (BSONObjIterator bi(spec); bi.more();) {
+        BSONElement e = bi.next();
+        if (e.fieldNameStringData() == "v") {
+            continue;
+        }
+        b.append(e);
+    }
+
+    b.append("v", version);
+    spec = b.obj();
 }
 
 // --------------------------

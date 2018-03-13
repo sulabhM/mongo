@@ -120,6 +120,11 @@ void NamespaceDetailsCollectionCatalogEntry::getReadyIndexes(
     }
 }
 
+void NamespaceDetailsCollectionCatalogEntry::getAllUniqueIndexes(
+    OperationContext* opCtx, std::vector<std::string>* names) const {
+    // Stubbed.
+}
+
 bool NamespaceDetailsCollectionCatalogEntry::isIndexMultikey(OperationContext* opCtx,
                                                              StringData idxName,
                                                              MultikeyPaths* multikeyPaths) const {
@@ -393,6 +398,10 @@ void NamespaceDetailsCollectionCatalogEntry::updateTTLSetting(OperationContext* 
     }
 }
 
+void NamespaceDetailsCollectionCatalogEntry::updateIndexVersion(OperationContext* opCtx,
+                                                                StringData indexName) {
+    // Stubbed.
+}
 void NamespaceDetailsCollectionCatalogEntry::_updateSystemNamespaces(OperationContext* opCtx,
                                                                      const BSONObj& update) {
     if (!_namespacesRecordStore)

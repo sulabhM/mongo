@@ -134,6 +134,8 @@ public:
                                                                const IndexDescriptor* desc,
                                                                KVPrefix prefix);
 
+    virtual Status updateIdentVersion(OperationContext* opCtx, StringData ident);
+
     virtual Status dropIdent(OperationContext* opCtx, StringData ident);
 
     virtual Status okToRename(OperationContext* opCtx,

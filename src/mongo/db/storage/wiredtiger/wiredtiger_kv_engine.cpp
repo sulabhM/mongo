@@ -807,6 +807,13 @@ SortedDataInterface* WiredTigerKVEngine::getGroupedSortedDataInterface(Operation
     return new WiredTigerIndexStandard(opCtx, _uri(ident), desc, prefix, _readOnly);
 }
 
+Status WiredTigerKVEngine::updateIdentVersion(OperationContext* opCtx, StringData ident) {
+    string uri = _uri(ident);
+
+    // Make the alter call here to update metadata in WT.
+    return Status::OK();
+}
+
 Status WiredTigerKVEngine::dropIdent(OperationContext* opCtx, StringData ident) {
     string uri = _uri(ident);
 

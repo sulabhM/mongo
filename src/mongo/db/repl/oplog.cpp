@@ -792,7 +792,7 @@ std::map<std::string, ApplyOpMetadata> opsMap = {
           NamespaceString nss;
           BSONObjBuilder resultWeDontCareAbout;
           std::tie(std::ignore, nss) = parseCollModUUIDAndNss(opCtx, ui, ns, cmd);
-          return collMod(opCtx, nss, cmd, &resultWeDontCareAbout);
+          return collModForUniqueIndexUpgrade(opCtx, nss, cmd);
       },
       {ErrorCodes::IndexNotFound, ErrorCodes::NamespaceNotFound}}},
     {"dbCheck", {dbCheckOplogCommand, {}}},

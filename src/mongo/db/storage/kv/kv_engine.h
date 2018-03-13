@@ -161,6 +161,8 @@ public:
 
     virtual Status repairIdent(OperationContext* opCtx, StringData ident) = 0;
 
+    virtual Status updateIdentVersion(OperationContext* opCtx, StringData ident) = 0;
+
     virtual Status dropIdent(OperationContext* opCtx, StringData ident) = 0;
 
     // optional
