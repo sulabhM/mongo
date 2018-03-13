@@ -70,6 +70,10 @@ public:
 
     void endBackup(OperationContext* opCtx) override {}
 
+    Status updateIdentVersion(OperationContext* opCtx, StringData ident) {
+        return Status::OK();
+    }
+
     Status dropIdent(OperationContext* opCtx, StringData ident) override;
 
     bool supportsDocLocking() const override {
