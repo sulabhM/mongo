@@ -273,16 +273,16 @@ TEST_F(ConfigInitializationTest, BuildsNecessaryIndexes) {
                  << "_id_"
                  << "ns"
                  << "config.chunks"),
-        BSON("v" << 2 << "unique" << true << "key" << BSON("ns" << 1 << "min" << 1) << "name"
+        BSON("v" << 3 << "unique" << true << "key" << BSON("ns" << 1 << "min" << 1) << "name"
                  << "ns_1_min_1"
                  << "ns"
                  << "config.chunks"),
-        BSON("v" << 2 << "unique" << true << "key" << BSON("ns" << 1 << "shard" << 1 << "min" << 1)
+        BSON("v" << 3 << "unique" << true << "key" << BSON("ns" << 1 << "shard" << 1 << "min" << 1)
                  << "name"
                  << "ns_1_shard_1_min_1"
                  << "ns"
                  << "config.chunks"),
-        BSON("v" << 2 << "unique" << true << "key" << BSON("ns" << 1 << "lastmod" << 1) << "name"
+        BSON("v" << 3 << "unique" << true << "key" << BSON("ns" << 1 << "lastmod" << 1) << "name"
                  << "ns_1_lastmod_1"
                  << "ns"
                  << "config.chunks")};
@@ -313,7 +313,7 @@ TEST_F(ConfigInitializationTest, BuildsNecessaryIndexes) {
                  << "_id_"
                  << "ns"
                  << "config.shards"),
-        BSON("v" << 2 << "unique" << true << "key" << BSON("host" << 1) << "name"
+        BSON("v" << 3 << "unique" << true << "key" << BSON("host" << 1) << "name"
                  << "host_1"
                  << "ns"
                  << "config.shards")};
@@ -322,7 +322,7 @@ TEST_F(ConfigInitializationTest, BuildsNecessaryIndexes) {
                  << "_id_"
                  << "ns"
                  << "config.tags"),
-        BSON("v" << 2 << "unique" << true << "key" << BSON("ns" << 1 << "min" << 1) << "name"
+        BSON("v" << 3 << "unique" << true << "key" << BSON("ns" << 1 << "min" << 1) << "name"
                  << "ns_1_min_1"
                  << "ns"
                  << "config.tags"),
@@ -360,7 +360,7 @@ TEST_F(ConfigInitializationTest, CompatibleIndexAlreadyExists) {
                  << "_id_"
                  << "ns"
                  << "config.shards"),
-        BSON("v" << 2 << "unique" << true << "key" << BSON("host" << 1) << "name"
+        BSON("v" << 3 << "unique" << true << "key" << BSON("host" << 1) << "name"
                  << "host_1"
                  << "ns"
                  << "config.shards")};
