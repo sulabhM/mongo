@@ -333,6 +333,12 @@ public:
                                                                  const NamespaceString& nss) = 0;
 
     /**
+     * Updates the index versin for unique indexes belonging to all non-replicated collecitons. To
+     * be called only at the end of the sync.
+     */
+    virtual Status upgradeUniqueIndexVersionNonReplicated(OperationContext* opCtx) = 0;
+
+    /**
      * Sets the highest timestamp at which the storage engine is allowed to take a checkpoint.
      * This timestamp can never decrease, and thus should be a timestamp that can never roll back.
      */

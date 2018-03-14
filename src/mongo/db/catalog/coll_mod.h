@@ -68,8 +68,13 @@ Status collModForUUIDUpgrade(OperationContext* opCtx,
                              CollectionUUID uuid);
 
 /*
- * Updates unique index version in catalog.
+ * Updates unique index version in system catalog.
  */
 void updateUniqueIndexVersionOnUpgrade(OperationContext* opCtx);
+
+/*
+ * Updates version in system catalog, for all non-replicated unique indexes.
+ */
+Status updateUniqueIndexVersionNonReplicated(OperationContext* opCtx);
 
 }  // namespace mongo

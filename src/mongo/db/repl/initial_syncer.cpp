@@ -1089,6 +1089,17 @@ void InitialSyncer::_rollbackCheckerCheckForRollbackCallback(
         return;
     }
 
+    // Update index version for all unique indexes belonging to non-replicated collections on
+    // secondaries. See comment in
+    // ReplicationCoordinatorExternalStateImpl::initializeReplSetStorage() for the explanation of
+    // why we do this.
+    auto opCtx = makeOpCtx();
+    auto updateStatus = _storage->upgradeUniqueIndexVersionNonReplicated(opCtx.get());
+    if (!updateStatus.isOK()) {
+        onCompletionGuard->setResultAndCancelRemainingWork_inlock(lock, updateStatus);
+        return;
+    }
+
     // Success!
     onCompletionGuard->setResultAndCancelRemainingWork_inlock(lock, _lastApplied);
 }

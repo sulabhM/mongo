@@ -418,6 +418,29 @@ Status ReplicationCoordinatorExternalStateImpl::initializeReplSetStorage(Operati
                                waitForAllEarlierOplogWritesToBeVisible(opCtx);
                            });
 
+        // Updates unique index version for all non-replicated collections. This is necessary for
+        // independent replica sets and config server replica sets started with no data files
+        // because collections in local are created prior to the featureCompatibilityVersion being
+        // set to 4.0, so the indexes are not created with new version. We exclude ShardServers when
+        // updating indexes belonging to non-replicated collections on the primary because
+        // ShardServers are started up by default with featureCompatibilityVersion 3.6, so we don't
+        // want update those indexes until the cluster's featureCompatibilityVersion is explicitly
+        // set to 4.0 by the config server. The below unique index update for non-replicated
+        // collections only occurs on the primary; updates for unique index belonging to
+        // non-replicated collections, are done on secondaries during InitialSync. When the config
+        // server sets the featureCompatibilityVersion to 4.0, the shard primary will update unique
+        // indexes belonging to all the collections. One special case here is if a shard is already
+        // in featureCompatibilityVersion 4.0 and a new node is started up with --shardsvr and added
+        // to that shard, the new node will still start up with featureCompatibilityVersion 3.6 and
+        // need to have unique index version updated. Such indexes would be updated during,
+        // InitialSync because the new node is a secondary.
+        if (serverGlobalParams.clusterRole != ClusterRole::ShardServer &&
+            FeatureCompatibilityVersion::isCleanStartUp()) {
+            auto updateStatus = updateUniqueIndexVersionNonReplicated(opCtx);
+            if (!updateStatus.isOK()) {
+                return updateStatus;
+            }
+        }
         FeatureCompatibilityVersion::setIfCleanStartup(opCtx, _storageInterface);
     } catch (const DBException& ex) {
         return ex.toStatus();
