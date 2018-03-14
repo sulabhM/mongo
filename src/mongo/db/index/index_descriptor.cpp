@@ -140,7 +140,7 @@ IndexVersion IndexDescriptor::getDefaultIndexVersion(
     // include "unique:true", then we would need to change the logic here to preserve its
     // behavior.
     if (isUniqueIndex && (featureCompatibilityVersion >=
-         ServerGlobalParams::FeatureCompatibility::Version::kFullyUpgradedTo40)) {
+                          ServerGlobalParams::FeatureCompatibility::Version::kFullyUpgradedTo40)) {
         return IndexVersion::kV2Unique;
     }
 
