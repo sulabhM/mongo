@@ -35,6 +35,32 @@
         }
     };
 
+    let recreateUniqueIndexes = function(db) {
+        // Obtain a list of all unique indexes
+        var unique_idx = [];
+        db.adminCommand("listDatabases").databases.forEach(function(d){
+            let mdb = db.getSiblingDB(d.name);
+            mdb.getCollectionInfos().forEach(function(c){
+                let currentCollection = mdb.getCollection(c.name);
+                currentCollection.getIndexes().forEach(function(i){
+                    if (i.unique){
+                        unique_idx.push(i);
+                    }
+                });
+            });
+        });
+
+        // Drop all the indexes in the unique index list
+        for (let i = 0; i < unique_idx.length; i++){
+            db.getSiblingDB(unique_idx[i].ns.split(".")[0]).runCommand({dropIndexes: unique_idx[i].ns.split(".")[1], index: unique_idx[i].name})
+        }
+
+        // Create all the indexes in the unique index list - these will now be created in the downgraded version
+        for (let i = 0; i < unique_idx.length; i++){
+            db.getSiblingDB(unique_idx[i].ns.split(".")[0]).runCommand({createIndexes: unique_idx[i].ns.split(".")[1], indexes:[{"key" : unique_idx[i].key, "name" : unique_idx[i].name,"unique":true}]});
+        }
+    }
+
     // Create and clear dbpath
     let sharedDbPath = MongoRunner.dataPath + "do_upgrade_downgrade";
     resetDbpath(sharedDbPath);
@@ -80,6 +106,9 @@
         // Ensure featureCompatibilityVersion is last-stable and all collections still have UUIDs.
         checkFCV(adminDB, lastStableFCV);
         checkCollectionUUIDs(adminDB);
+
+        // Drop and recreate unique indexes with the older FCV
+        recreateUniqueIndexes(adminDB);
 
         // Stop latest binary version mongod.
         MongoRunner.stopMongod(conn);
@@ -171,6 +200,9 @@
             let secondaryAdminDB = secondaries[j].getDB("admin");
             checkCollectionUUIDs(secondaryAdminDB);
         }
+
+        // Drop and recreate unique indexes with the older FCV
+        recreateUniqueIndexes(primaryAdminDB);
 
         // Stop latest binary version replica set.
         rst.stopSet(null /* signal */, true /* forRestart */);
