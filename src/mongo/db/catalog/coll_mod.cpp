@@ -305,8 +305,6 @@ Status _collModInternal(OperationContext* opCtx,
     AutoGetDb autoDb(opCtx, dbName, MODE_X);
     Database* const db = autoDb.getDb();
     Collection* coll = db ? db->getCollection(opCtx, nss) : nullptr;
-    // A cmdObj with an empty collMod implies that it is a Unique Index upgrade collMod.
-    bool uniqueIndexUpgradeCollMod = (cmdObj.nFields() == 1) && upgradeUniqueIndexVersion;
 
     // May also modify a view instead of a collection.
     boost::optional<ViewDefinition> view;
@@ -427,7 +425,7 @@ Status _collModInternal(OperationContext* opCtx,
         setCollectionOptionFlag(opCtx, coll, cmr.noPadding, result);
 
     // Upgrade unique indexes
-    if (uniqueIndexUpgradeCollMod) {
+    if (upgradeUniqueIndexVersion) {
         std::vector<std::string> indexNames;
         coll->getCatalogEntry()->getAllUniqueIndexes(opCtx, &indexNames);
 
@@ -560,7 +558,8 @@ Status collModForUniqueIndexUpgrade(OperationContext* opCtx,
                             nss,
                             cmdObj,
                             &resultWeDontCareAbout,
-                            /*updateUniqueIndexVersion*/ true,
+                            /*Is unique idx upgrade if cmd is an empty collMod, i.e., nFields is 1*/
+                            cmdObj.nFields() == 1,
                             /*UUID*/ boost::none);
 }
 
@@ -636,7 +635,7 @@ void addCollectionUUIDs(OperationContext* opCtx) {
     repl::ReplicationCoordinator::get(opCtx)->awaitReplication(opCtx, awaitOpTime, writeConcern);
 }
 
-Status _updateNonReplicatedIndexeVersionPerCollection(OperationContext* opCtx, Collection* coll) {
+Status _updateNonReplicatedIndexVersionPerCollection(OperationContext* opCtx, Collection* coll) {
     BSONObjBuilder collModObjBuilder;
     collModObjBuilder.append("collMod", coll->ns().coll());
     BSONObj collModObj = collModObjBuilder.done();
@@ -661,7 +660,7 @@ Status _updateNonReplicatedUniqueIndexVersionPerDatabase(OperationContext* opCtx
         for (auto collectionIt = db->begin(); collectionIt != db->end(); ++collectionIt) {
             Collection* coll = *collectionIt;
 
-            auto collModStatus = _updateNonReplicatedIndexeVersionPerCollection(opCtx, coll);
+            auto collModStatus = _updateNonReplicatedIndexVersionPerCollection(opCtx, coll);
             if (!collModStatus.isOK())
                 return collModStatus;
         }
@@ -673,7 +672,7 @@ Status _updateNonReplicatedUniqueIndexVersionPerDatabase(OperationContext* opCtx
         if (!coll)
             return Status::OK();
 
-        auto collModStatus = _updateNonReplicatedIndexeVersionPerCollection(opCtx, coll);
+        auto collModStatus = _updateNonReplicatedIndexVersionPerCollection(opCtx, coll);
         if (!collModStatus.isOK())
             return collModStatus;
     }
@@ -693,13 +692,14 @@ void _updateUniqueIndexVersionPerDatabase(OperationContext* opCtx, const std::st
         for (auto collectionIt = db->begin(); collectionIt != db->end(); ++collectionIt) {
             Collection* coll = *collectionIt;
             NamespaceString collNSS = coll->ns();
-            BSONObjBuilder collModObjBuilder;
-            collModObjBuilder.append("collMod", collNSS.coll());
-            BSONObj collModObj = collModObjBuilder.done();
 
             // Skip non-replicated collections.
             if (collNSS.coll() == "system.profile")
                 continue;
+
+            BSONObjBuilder collModObjBuilder;
+            collModObjBuilder.append("collMod", collNSS.coll());
+            BSONObj collModObj = collModObjBuilder.done();
 
             uassertStatusOK(collModForUniqueIndexUpgrade(opCtx, collNSS, collModObj));
         }

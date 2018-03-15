@@ -333,7 +333,7 @@ public:
                                                                  const NamespaceString& nss) = 0;
 
     /**
-     * Updates the index versin for unique indexes belonging to all non-replicated collecitons. To
+     * Updates the index version for unique indexes belonging to all non-replicated collecitons. To
      * be called only at the end of the sync.
      */
     virtual Status upgradeUniqueIndexVersionNonReplicated(OperationContext* opCtx) = 0;
