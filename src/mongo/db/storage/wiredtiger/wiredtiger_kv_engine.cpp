@@ -810,7 +810,9 @@ SortedDataInterface* WiredTigerKVEngine::getGroupedSortedDataInterface(Operation
 Status WiredTigerKVEngine::updateIdentVersion(OperationContext* opCtx, StringData ident) {
     string uri = _uri(ident);
 
+    int ret = 0;
     // Make the alter call here to update metadata in WT.
+    invariantWTOK(ret);
     return Status::OK();
 }
 

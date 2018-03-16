@@ -241,7 +241,7 @@ void KVCollectionCatalogEntry::updateIndexVersion(OperationContext* opCtx, Strin
     _catalog->putMetaData(opCtx, ns().toString(), md);
 
     const string ident = _catalog->getIndexIdent(opCtx, ns().ns(), indexName);
-    _engine->updateIdentVersion(opCtx, ident);
+    (void)_engine->updateIdentVersion(opCtx, ident);
 }
 
 void KVCollectionCatalogEntry::addUUID(OperationContext* opCtx,
