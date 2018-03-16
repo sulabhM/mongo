@@ -660,6 +660,15 @@ Status _updateNonReplicatedUniqueIndexVersionPerDatabase(OperationContext* opCtx
         for (auto collectionIt = db->begin(); collectionIt != db->end(); ++collectionIt) {
             Collection* coll = *collectionIt;
 
+            NamespaceString nss = coll->ns();
+
+            // Skip system.namespaces until SERVER-30095 is addressed and system.indexes until
+            // SERVER-29926 is addressed. These collections do not have unique indexes so it is safe
+            // to skip those.
+            if (nss.coll() == "system.namespaces" || nss.isSystemDotIndexes()) {
+                continue;
+            }
+
             auto collModStatus = _updateNonReplicatedIndexVersionPerCollection(opCtx, coll);
             if (!collModStatus.isOK())
                 return collModStatus;
@@ -692,6 +701,11 @@ void _updateUniqueIndexVersionPerDatabase(OperationContext* opCtx, const std::st
         for (auto collectionIt = db->begin(); collectionIt != db->end(); ++collectionIt) {
             Collection* coll = *collectionIt;
             NamespaceString collNSS = coll->ns();
+
+            // Skip system.namespaces until SERVER-30095 is addressed.
+            if (collNSS.coll() == "system.namespaces") {
+                continue;
+            }
 
             // Skip non-replicated collections.
             if (collNSS.coll() == "system.profile")
