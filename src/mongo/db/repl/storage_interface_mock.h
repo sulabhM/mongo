@@ -277,6 +277,9 @@ public:
         return getCollectionUUIDFn(opCtx, nss);
     }
 
+    Status upgradeUniqueIndexVersionNonReplicated(OperationContext* opCtx) override {
+        return Status::OK();
+    }
     void setStableTimestamp(ServiceContext* serviceCtx, Timestamp snapshotName) override;
 
     void setInitialDataTimestamp(ServiceContext* serviceCtx, Timestamp snapshotName) override;
