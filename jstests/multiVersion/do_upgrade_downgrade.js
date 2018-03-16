@@ -35,8 +35,7 @@
         }
     };
 
-    let recreateUniqueIndexes =
-        function(db) {
+    let recreateUniqueIndexes = function(db) {
         // Obtain a list of all unique indexes
         var unique_idx = [];
         db.adminCommand("listDatabases").databases.forEach(function(d) {
@@ -56,7 +55,7 @@
             db.getSiblingDB(unique_idx[i].ns.split(".")[0]).runCommand({
                 dropIndexes: unique_idx[i].ns.split(".")[1],
                 index: unique_idx[i].name
-            })
+            });
         }
 
         // Create all the indexes in the unique index list - these will now be created in the
@@ -67,7 +66,7 @@
                 indexes: [{"key": unique_idx[i].key, "name": unique_idx[i].name, "unique": true}]
             });
         }
-    }
+    };
 
     // Create and clear dbpath
     let sharedDbPath = MongoRunner.dataPath + "do_upgrade_downgrade";
